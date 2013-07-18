@@ -1,0 +1,60 @@
+html {overflow-y: scroll;}
+body { position:relative; background-color:#EEEEEE; }
+h1, h2 { clear:both; }
+h2 { margin-bottom:0px; }
+p { display:inline-block; margin-left:5px; margin-right:5px;}
+p .block { display:inline-block; width:15px; height:15px; }
+
+.breakdown { margin-bottom: 15px; }
+
+.block { display:inline; /*border:1px solid black; margin:1px;*/ cursor:default; } 
+.block span { display:inline-block; height:15px; }
+
+.ion, .ionmonkey { background-color:#54D93D; border-color:green; } 
+.ion.compile, .ion_compile { background-color:green; } 
+.ion.bail { background-color:#33FF00; border-color:#2CDB00;} 
+.ion.bail { background-color:red; border-color:red;} 
+.jm, .baseline { background-color:#FFE75E; border-color:#B8A642; } 
+.jm.compile { background-color:#FF8000; } 
+.interpreter { background-color:white; border-color:#AAAAAA; }
+.yarr.compile { background-color:#6F00FF; }
+.yarr.jit, .yarr_jit_execute { background-color:#BE8CFF; }
+
+.gc { background-color:#AAAAAA; }
+
+.hover { position:absolute; padding:15px; background-color:white; border: 1px solid black; line-height:1em;}
+
+table {
+    background-color: #F7F7F7;
+    border-bottom: 1px solid #AAAAAA;
+    border-collapse: collapse;
+    border-top: 1px solid #AAAAAA;
+    min-width: 100%;
+    margin-bottom: 15px;
+}
+tr:not(:last-child) td, .vertical tr:not(:last-child) th, tbody:not(:last-child) tr td {
+    border-bottom: 1px solid #DDDDDD;
+}
+tr:nth-child(2n) td, tbody:nth-child(2n) td {
+    background-color: #F0F0F0;
+}
+th {
+    background-color: #E5E5E5;
+    border-bottom: 1px solid #AAAAAA;
+    border-top: 1px solid #AAAAAA;
+    padding: 5px 15px;
+    text-align: left;
+    vertical-align: top;
+    font-weight: bold;
+}
+td {
+    padding: 5px 15px;
+}
+table.vertical th {
+    padding: 5px 15px;
+    width: 150px;
+}
+
+tr.inactive td {
+  color: #AAAAAA;
+}
