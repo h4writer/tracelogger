@@ -22,7 +22,8 @@ thead { cursor:pointer; }
 .yarr.compile { background-color:#6F00FF; }
 .yarr.jit, .yarr_jit_execute { background-color:#BE8CFF; }
 
-.gc { background-color:#AAAAAA; }
+.gc { background-color:#666666; }
+.minor_gc { background-color:#CCCCCC; }
 
 .hover { position:absolute; padding:15px; background-color:white; border: 1px solid black; line-height:1em;}
 
