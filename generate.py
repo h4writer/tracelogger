@@ -39,6 +39,7 @@ print "<p><span class='block ion run'></span> ionmonkey running</p>"
 print "<p><span class='block jm run'></span> baseline running</p>"
 print "<p><span class='block yarr jit'></span> yarr jit</p>"
 print "<p><span class='block gc'></span> GC</p>"
+print "<p><span class='block minor_gc'></span> Minor GC</p>"
 print "<!--<div><p>1px = "+str(int(1./zoom))+" kernel ticks</p></div>-->"
 print "</div>"
 print "<div class='graph'>"
@@ -95,6 +96,13 @@ def keep_stat(delta, info):
       script = info["data"][3]
       script_stat[script][task+" "+engine] += delta
 
+script_called = defaultdict(lambda : defaultdict(int))
+def keep_stat_start(info):
+  task = info["data"][2]
+  if task == "script" or task == "ion_compile":
+      script = info["data"][3]
+      script_called[script][task] += 1
+
 ##################################################""
 
 stack = []
@@ -110,6 +118,7 @@ for line in fp:
         time = int(data[0])
         if data[1] == "start":
             stack.append({"data":data})
+            keep_stat_start(stack[-1])
         else:
             output(time-prev_time, stack[-1])
             keep_stat(time-prev_time, stack[-1])
@@ -140,14 +149,14 @@ for i in engine_stat:
 
 print "<h2>Engine overview</h2>"
 print "<table>"
-print "<thead><td>Engine</td><td>percent</td></thead>"
+print "<thead><td>Engine</td><td>Percent</td></thead>"
 for i in engine_stat:
   print "<tr><td>"+str(i)+"</td><td>%.2f%%</td></tr>" % (engine_stat[i]*100./total)
 print "</table>"
 
 print "<h2>Script overview</h2>"
 print "<table>"
-print "<thead><td>Script</td><td>total time</td><td>time spent</td></thead>"
+print "<thead><td>Script</td><td>Times called</td><td>Times compiled</td><td>Total time</td><td>Time spent</td></thead>"
 for i in script_stat:
   # hack since this is actually just overhead
   del script_stat[i]["script "]
@@ -157,6 +166,8 @@ for i in script_stat:
     total += script_stat[i][j]
 
   print "<tr><td>"+str(i)+"</td>"
+  print "<td>"+str(script_called[i]["script"])+"</td>"
+  print "<td>"+str(script_called[i]["ion_compile"])+"</td>"
   print "<td>%.2f%%</td><td>" % (total*100./total_script)
   for j in script_stat[i]:
     print j+": %.2f%%, " % (script_stat[i][j]*100./total)
