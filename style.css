@@ -2,8 +2,10 @@ html {overflow-y: scroll;}
 body { position:relative; background-color:#EEEEEE; }
 h1, h2 { clear:both; }
 h2 { margin-bottom:0px; }
-p { display:inline-block; margin-left:5px; margin-right:5px;}
-p .block { display:inline-block; width:15px; height:15px; }
+#legend p { display:inline-block; margin-left:5px; margin-right:5px;}
+#legend p .block { display:inline-block; width:15px; height:15px; }
+
+thead { cursor:pointer; }
 
 .breakdown { margin-bottom: 15px; }
 
