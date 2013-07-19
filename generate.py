@@ -1,13 +1,19 @@
 import sys
 import gzip
 
-if len(sys.argv) < 4:
-    print sys.argv[0]+" [rev] [logfile] [zoomlevel]"
+if len(sys.argv) < 3:
+    print sys.argv[0]+" logfile zoomlevel [benchmark name] [revision number]"
     exit()
 
-revno = sys.argv[1]
-logFile = sys.argv[2]
-zoom = 1./int(sys.argv[3])
+
+logFile = sys.argv[1]
+zoom = 1./int(sys.argv[2])
+bench_name = None
+if len(sys.argv) > 3:
+  bench_name = sys.argv[3]
+revno = None
+if len(sys.argv) > 4:
+  revno = sys.argv[4]
 
 start = 0
 status = ""
@@ -21,18 +27,20 @@ print "<script src='basic.js'></script>"
 print "<link rel='stylesheet' type='text/css' href='style.css'>"
 print "</head>"
 print "<body>"
-print "<h1>Revision: <a href='http://hg.mozilla.org/projects/ionmonkey/rev/"+revno+"'>"+revno+"</a></h1>"
-print "<div><a href='index.html'>back</a></div>"
+if bench_name:
+  print "<h1>"+bench_name+"</h1>"
+if revno:
+  print "<p>Revision: <a href='https://hg.mozilla.org/mozilla-central/rev/"+revno+"'>"+revno+"</a></p>"
+
+print "<div id=legend>"
 print "<p><span class='block interpreter run'></span> interpreter</p>"
 print "<p><span class='block ion compile'></span> ionmonkey compilation</p>"
 print "<p><span class='block ion run'></span> ionmonkey running</p>"
-#print "<p><span class='block ion bail'></span> ionmonkey bailout</p>"
-#print "<p><span class='block jm compile'></span> jaegermonkey compilation</p>"
 print "<p><span class='block jm run'></span> baseline running</p>"
 print "<p><span class='block yarr jit'></span> yarr jit</p>"
 print "<p><span class='block gc'></span> GC</p>"
-print "<div><p>1px = "+str(int(1./zoom))+" kernel ticks</p></div>"
-
+print "<!--<div><p>1px = "+str(int(1./zoom))+" kernel ticks</p></div>-->"
+print "</div>"
 print "<div class='graph'>"
 
 def create_backtrace():
