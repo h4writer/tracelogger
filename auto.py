@@ -25,14 +25,7 @@ def bench(bench_name, js_file, html_file):
   global octane, js
 
   print run("cd "+octane+"; "+js+" --ion-parallel-compile=on "+js_file),
-
-  head = run("head -1 /tmp/tracelogging.log").split(",")[0]
-  tail = run("tail -n 1 /tmp/tracelogging.log").split(",")[0]
-  ticks = int(tail)-int(head)
-  pixels = 80000
-
-  print run("cd /home/h4writer/Build/tracelogger/output; python ../generate.py /tmp/tracelogging.log "+str(ticks/pixels)+" \""+bench_name+"\" > "+html_file),
-
+  print run("cd /home/h4writer/Build/tracelogger/output; python ../generate.py /tmp/tracelogging.log 80000 \""+bench_name+"\" > "+html_file),
 
 js = "/home/h4writer/Build/mozilla-inbound/js/src/build-64/js"
 for i in benchmarks:

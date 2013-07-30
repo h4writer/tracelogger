@@ -1,13 +1,22 @@
 import sys
 import gzip
 
-if len(sys.argv) < 3:
-    print sys.argv[0]+" logfile zoomlevel [benchmark name] [revision number]"
+if len(sys.argv) < 2:
+    print sys.argv[0]+" logfile [width in px, default=80000] [benchmark name] [revision number]"
     exit()
 
-
 logFile = sys.argv[1]
-zoom = 1./int(sys.argv[2])
+
+pixels = 80000
+if len(sys.argv) > 2:
+  pixels = int(sys.argv[2])
+
+import tailer 
+head = tailer.head(open(logFile), 1)[0].split(",")[0]
+tail = tailer.tail(open(logFile), 1)[0].split(",")[0]
+ticks = int(tail)-int(head)
+zoom = pixels*1./ticks
+
 bench_name = None
 if len(sys.argv) > 3:
   bench_name = sys.argv[3]
@@ -114,6 +123,8 @@ else:
 
 for line in fp:
     data = line.split(",")
+    if len(data) < 2:
+        continue
     if data[1] == "start" or data[1] == "stop" or (data[1] == "info" and data[2] == "engine"):
         time = int(data[0])
         if data[1] == "start":
