@@ -21,6 +21,9 @@ thead { cursor:pointer; }
 .interpreter { background-color:white; border-color:#AAAAAA; }
 .yarr.compile { background-color:#6F00FF; }
 .yarr.jit, .yarr_jit_execute { background-color:#BE8CFF; }
+.parser_script { background-color:#DB0000; }
+.parser_lazy { background-color:#A30000; }
+.parser_function { background-color:#CC8585; }
 
 .gc { background-color:#666666; }
 .minor_gc { background-color:#CCCCCC; }

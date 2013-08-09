@@ -49,6 +49,9 @@ print "<p><span class='block jm run'></span> baseline running</p>"
 print "<p><span class='block yarr jit'></span> yarr jit</p>"
 print "<p><span class='block gc'></span> GC</p>"
 print "<p><span class='block minor_gc'></span> Minor GC</p>"
+print "<p><span class='block parser_script'></span> Script parsing</p>"
+print "<p><span class='block parser_lazy'></span> Lazy parsing</p>"
+print "<p><span class='block parser_function'></span> Function parsing</p>"
 print "<!--<div><p>1px = "+str(int(1./zoom))+" kernel ticks</p></div>-->"
 print "</div>"
 print "<div class='graph'>"
@@ -101,14 +104,14 @@ def keep_stat(delta, info):
       engine = info["engine"]
   engine_stat[task+" "+engine] += delta
 
-  if task == "script" or task == "ion_compile":
+  if task == "script" or task == "ion_compile" or "parser" in task:
       script = info["data"][3]
       script_stat[script][task+" "+engine] += delta
 
 script_called = defaultdict(lambda : defaultdict(int))
 def keep_stat_start(info):
   task = info["data"][2]
-  if task == "script" or task == "ion_compile":
+  if task == "script" or task == "ion_compile" or "parser" in task:
       script = info["data"][3]
       script_called[script][task] += 1
 
@@ -147,7 +150,8 @@ for line in fp:
 print "</div>"
 
 # hack since this is actually just overhead
-del engine_stat["script "]
+if "script " in engine_stat:
+  del engine_stat["script "]
 
 total = 0
 for i in engine_stat:
@@ -155,7 +159,7 @@ for i in engine_stat:
 
 total_script = 0
 for i in engine_stat:
-  if "script" in i or "compile" in i:
+  if "script" in i or "compile" in i or "parser" in i:
     total_script += engine_stat[i]
 
 print "<h2>Engine overview</h2>"
@@ -170,7 +174,8 @@ print "<table>"
 print "<thead><td>Script</td><td>Times called</td><td>Times compiled</td><td>Total time</td><td>Time spent</td></thead>"
 for i in script_stat:
   # hack since this is actually just overhead
-  del script_stat[i]["script "]
+  if "script " in script_stat[i]:
+    del script_stat[i]["script "]
 
   total = 0
   for j in script_stat[i]:
