@@ -2,6 +2,7 @@ import sys
 import gzip
 import argparse
 import tailer
+from collections import defaultdict
 
 argparser = argparse.ArgumentParser(description='Parse tracelogs and create html output for them.')
 argparser.add_argument('logfile',
@@ -11,9 +12,11 @@ argparser.add_argument('outfile',
 argparser.add_argument('-w', '--width', type=int, default=80000,
                    help='width in px (default: 80000)')
 argparser.add_argument('-n', '--name', default=None,
-                   help='Benchmark name')
+                   help='benchmark name')
 argparser.add_argument('-r', '--revision', default=None,
-                   help='Revision the shell or browser executable was built from')
+                   help='mercurial revision the shell or browser executable was built from')
+argparser.add_argument('-f', '--filter-scripts', dest='filter', default='',
+                   help='Only record information if at least one script is on the stack whose location starts with the given string')
 args = argparser.parse_args()
 
 logFilename = args.logfile
@@ -21,15 +24,15 @@ outFilename = args.outfile
 pixels = args.width
 bench_name = args.name
 revno = args.revision
+scriptFilter = args.filter
 
 head = tailer.head(open(logFilename), 1)[0].split(",")[0]
 tail = tailer.tail(open(logFilename), 1)[0].split(",")[0]
 ticks = int(tail)-int(head)
 zoom = pixels*1./ticks
 
-start = 0
-status = ""
-oldline = ""
+filter_matched = False
+first_matched_frame = 0
 
 outfile = open(outFilename, 'w')
 
@@ -62,11 +65,18 @@ outfile.write("</div>\n")
 outfile.write("<div class='graph'>\n")
 
 def create_backtrace():
+    if not filter_matched:
+      return ""
     full_info = ""
-    for i in range(len(stack)):
-        full_info += "; -"+",".join(stack[i]["data"][2:])
-        if "engine" in stack[i]:
-            full_info += stack[i]["engine"]
+    # print first_matched_frame
+    for info in stack[first_matched_frame:]:
+        full_info += "; -"+",".join(info["data"][2:])
+        if "engine" in info:
+            full_info += info["engine"]
+    # for i in range(first_matched_frame:len(stack)):
+    #     full_info += "; -"+",".join(stack[i]["data"][2:])
+    #     if "engine" in stack[i]:
+    #         full_info += stack[i]["engine"]
     return full_info
 
 block_time = 0
@@ -99,7 +109,6 @@ def output(delta, info):
     outfile.write("<span class='block "+class_+" "+engine+"' info='Block: "+str(block_time)+";Engine:"+engine+";<b>Call stack:</b>"+full_info+"'>"+blocks+"</span>")
     block_time += 1
 
-from collections import defaultdict
 engine_stat = defaultdict(int)
 script_stat = defaultdict(lambda : defaultdict(int))
 def keep_stat(delta, info):
@@ -109,16 +118,22 @@ def keep_stat(delta, info):
       engine = info["engine"]
   engine_stat[task+" "+engine] += delta
 
-  if task == "script" or task == "ion_compile" or "parser" in task:
+  if (task == "script" and filter_matched) or ((task == "ion_compile" or "parser" in task) and info["data"][3].startswith(scriptFilter)):
       script = info["data"][3]
       script_stat[script][task+" "+engine] += delta
 
 script_called = defaultdict(lambda : defaultdict(int))
-def keep_stat_start(info):
-  task = info["data"][2]
+def keep_stat_start(data):
+  global filter_matched
+  task = data[2]
+  if (not filter_matched) and task == "script" and data[3].startswith(scriptFilter):
+      filter_matched = True
+      first_matched_frame = len(stack)
+      print "match: " + data[3] + ', stack len: ' + str(first_matched_frame)
   if task == "script" or task == "ion_compile" or "parser" in task:
-      script = info["data"][3]
-      script_called[script][task] += 1
+      script = data[3]
+      if task != "script" or filter_matched:
+          script_called[script][task] += 1
 
 ##################################################""
 
@@ -137,7 +152,7 @@ for line in fp:
         time = int(data[0])
         if data[1] == "start":
             stack.append({"data":data})
-            keep_stat_start(stack[-1])
+            keep_stat_start(data)
         else:
             output(time-prev_time, stack[-1])
             keep_stat(time-prev_time, stack[-1])
@@ -147,7 +162,9 @@ for line in fp:
                 stack[-1]["engine"] = data[3]
             else:
                 assert data[1] == "stop"
-                stack = stack[:-1]
+                stack.pop()
+                if len(stack) == first_matched_frame:
+                  filter_matched = False
 
     prev_time = time
 
