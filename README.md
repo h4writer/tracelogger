@@ -8,8 +8,11 @@ This branch contains the python scripts to create a nice graph out of traceloggi
 
 
 To create a tracelogging graph when you obtained the log file:
-python generate.py [-h] [-w WIDTH] [-n NAME] [-r REVISION] logfile outfile
-e.g. python generate.py /tmp/tracelogging.log /tmp/test.html
+
+    python generate.py [-h] [-w WIDTH] [-n NAME] [-r REVISION] logfile outfile
+    
+e.g.
+    python generate.py /tmp/tracelogging.log /tmp/test.html
 
 The outfile should contain the graph. Put style.css and basic.js in the same folder
 and you should be good to go.
