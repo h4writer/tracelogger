@@ -1,67 +1,90 @@
 import sys
 import gzip
+import argparse
+import tailer
 
-if len(sys.argv) < 2:
-    print sys.argv[0]+" logfile [width in px, default=80000] [benchmark name] [revision number]"
-    exit()
+argparser = argparse.ArgumentParser(description='Parse tracelogs and create html output for them.')
+argparser.add_argument('logfile',
+                   help='the logfile to parse')
+argparser.add_argument('outfile',
+                   help='the name of the html output file')
+argparser.add_argument('-w', '--width', type=int, default=80000,
+                   help='width in px (default: 80000)')
+argparser.add_argument('-n', '--name', default=None,
+                   help='Benchmark name')
+argparser.add_argument('-r', '--revision', default=None,
+                   help='Revision the shell or browser executable was built from')
+args = argparser.parse_args()
 
-logFile = sys.argv[1]
+logFilename = args.logfile
+outFilename = args.outfile
+pixels = args.width
+bench_name = args.name
+revno = args.revision
 
-pixels = 80000
-if len(sys.argv) > 2:
-  pixels = int(sys.argv[2])
-
-import tailer 
-head = tailer.head(open(logFile), 1)[0].split(",")[0]
-tail = tailer.tail(open(logFile), 1)[0].split(",")[0]
-ticks = int(tail)-int(head)
+tail = tailer.tail(open(logFilename), 1)[0].split(",")[0]
+ticks = int(tail)
 zoom = pixels*1./ticks
-
-bench_name = None
-if len(sys.argv) > 3:
-  bench_name = sys.argv[3]
-revno = None
-if len(sys.argv) > 4:
-  revno = sys.argv[4]
 
 start = 0
 status = ""
 oldline = ""
 
+outfile = open(outFilename, 'w')
+
+names = {
+  "s i": "interpreter run",
+  "s b": "baseline run",
+  "c": "ion compile",
+  "s j": "ion run",
+  "r": "yarr",
+  "g": "minor_gc",
+  "G": "gc",
+  "pf": "parser_function",
+  "ps": "parser_script",
+  "pl": "parser_lazy",
+}
+engines = {
+  "i": "Interpreter",
+  "b": "Baseline",
+  "j": "IonMonkey",
+  "": ""
+}
+
 
 ###################################################
-print "<html>"
-print "<head>"
-print "<script src='basic.js'></script>"
-print "<link rel='stylesheet' type='text/css' href='style.css'>"
-print "</head>"
-print "<body>"
+outfile.write("<html>\n")
+outfile.write("<head>\n")
+outfile.write("<script src='basic.js'></script>\n")
+outfile.write("<link rel='stylesheet' type='text/css' href='style.css'>\n")
+outfile.write("</head>\n")
+outfile.write("<body>\n")
 if bench_name:
-  print "<h1>"+bench_name+"</h1>"
+  outfile.write("<h1>"+bench_name+"</h1>\n")
 if revno:
-  print "<p>Revision: <a href='https://hg.mozilla.org/mozilla-central/rev/"+revno+"'>"+revno+"</a></p>"
+  outfile.write("<p>Revision: <a href='https://hg.mozilla.org/mozilla-central/rev/"+revno+"'>"+revno+"</a></p>\n")
 
-print "<div id=legend>"
-print "<p><span class='block interpreter run'></span> interpreter</p>"
-print "<p><span class='block ion compile'></span> ionmonkey compilation</p>"
-print "<p><span class='block ion run'></span> ionmonkey running</p>"
-print "<p><span class='block jm run'></span> baseline running</p>"
-print "<p><span class='block yarr jit'></span> yarr jit</p>"
-print "<p><span class='block gc'></span> GC</p>"
-print "<p><span class='block minor_gc'></span> Minor GC</p>"
-print "<p><span class='block parser_script'></span> Script parsing</p>"
-print "<p><span class='block parser_lazy'></span> Lazy parsing</p>"
-print "<p><span class='block parser_function'></span> Function parsing</p>"
-print "<!--<div><p>1px = "+str(int(1./zoom))+" kernel ticks</p></div>-->"
-print "</div>"
-print "<div class='graph'>"
+outfile.write("<div id=legend>\n")
+outfile.write("<p><span class='block interpreter run'></span> interpreter</p>\n")
+outfile.write("<p><span class='block ion compile'></span> ionmonkey compilation</p>\n")
+outfile.write("<p><span class='block ion run'></span> ionmonkey running</p>\n")
+outfile.write("<p><span class='block jm run'></span> baseline running</p>\n")
+outfile.write("<p><span class='block yarr jit'></span> yarr jit</p>\n")
+outfile.write("<p><span class='block gc'></span> GC</p>\n")
+outfile.write("<p><span class='block minor_gc'></span> Minor GC</p>\n")
+outfile.write("<p><span class='block parser_script'></span> Script parsing</p>\n")
+outfile.write("<p><span class='block parser_lazy'></span> Lazy parsing</p>\n")
+outfile.write("<p><span class='block parser_function'></span> Function parsing</p>\n")
+outfile.write("<!--<div><p>1px = "+str(int(1./zoom))+" kernel ticks</p></div>-->\n")
+outfile.write("</div>\n")
+outfile.write("<div class='graph'>\n")
 
 def create_backtrace():
     full_info = ""
     for i in range(len(stack)):
         full_info += "; -"+",".join(stack[i]["data"][2:])
         if "engine" in stack[i]:
-            full_info += stack[i]["engine"]
+            full_info += " " + engines[stack[i]["engine"]]
     return full_info
 
 block_time = 0
@@ -69,29 +92,30 @@ aggregate = 0
 def output(delta, info):
     global text, block_time,aggregate
 
+    width = delta*zoom + aggregate
+
     class_ = info["data"][2]
     engine = ""
     if "engine" in info:
         engine = info["engine"]
+        class_ += " " + engine
+    elif class_ == "s":
+        aggregate = width
+        return
 
-    block_width = 10
-    width = delta*zoom
-    width += aggregate
     if width < 1:
       aggregate = width
       return
-    # hack to remove time between script and logging which engine we are running
-    if class_ == "script" and engine == "":
-      agregate = width
-      return
     aggregate = 0
+
+    block_width = 10
     blocks = "<span style='width:"+str(width%block_width)+"px'>\n</span>"
     for i in range(int(width/block_width)):
       blocks += "<span style='width:"+str(block_width)+"px'>\n</span>"
 
     full_info = create_backtrace()
 
-    sys.stdout.write("<span class='block "+class_+" "+engine+"' info='Block: "+str(block_time)+";Engine:"+engine+";<b>Call stack:</b>"+full_info+"'>"+blocks+"</span>")
+    outfile.write("<span class='block "+names[class_]+"' info='Block: "+str(block_time)+";Engine: "+engines[engine]+";<b>Call stack:</b>"+full_info+"'>"+blocks+"</span>")
     block_time += 1
 
 from collections import defaultdict
@@ -100,18 +124,21 @@ script_stat = defaultdict(lambda : defaultdict(int))
 def keep_stat(delta, info):
   engine = ""
   task = info["data"][2]
+  statkey = task
   if "engine" in info:
       engine = info["engine"]
-  engine_stat[task+" "+engine] += delta
+      statkey += " " + engine
+  if engine != "" or task != "s":
+      engine_stat[statkey] += delta
 
-  if task == "script" or task == "ion_compile" or "parser" in task:
+  if (task == "s" and engine != "") or task == "c" or task[0] == "p":
       script = info["data"][3]
-      script_stat[script][task+" "+engine] += delta
+      script_stat[script][statkey] += delta
 
 script_called = defaultdict(lambda : defaultdict(int))
 def keep_stat_start(info):
   task = info["data"][2]
-  if task == "script" or task == "ion_compile" or "parser" in task:
+  if task == "s" or task == "c" or task[0] == "p":
       script = info["data"][3]
       script_called[script][task] += 1
 
@@ -119,76 +146,65 @@ def keep_stat_start(info):
 
 stack = []
 
-if ".gz" in logFile:
-    fp = gzip.open(logFile)
+if ".gz" in logFilename:
+    fp = gzip.open(logFilename)
 else:
-    fp = open(logFile)
+    fp = open(logFilename)
 
 for line in fp:
-    data = line.split(",")
+    data = line[:-1].split(",")
     if len(data) < 2:
         continue
-    if data[1] == "start" or data[1] == "stop" or (data[1] == "info" and data[2] == "engine"):
+    if data[1] == "1" or data[1] == "0" or (data[1] == "e"):
         time = int(data[0])
-        if data[1] == "start":
+        if data[1] == "1":
             stack.append({"data":data})
             keep_stat_start(stack[-1])
         else:
             output(time-prev_time, stack[-1])
             keep_stat(time-prev_time, stack[-1])
             
-            if data[1] == "info":
-                assert data[2] == "engine"
-                stack[-1]["engine"] = data[3]
+            if data[1] == "e":
+                stack[-1]["engine"] = data[2][0]
             else:
-                assert data[1] == "stop"
+                assert data[1] == "0"
                 stack = stack[:-1]
 
     prev_time = time
 
 ##########################################################
-print "</div>"
-
-# hack since this is actually just overhead
-if "script " in engine_stat:
-  del engine_stat["script "]
+outfile.write("</div>\n")
 
 total = 0
-for i in engine_stat:
-  total += engine_stat[i]
-
 total_script = 0
 for i in engine_stat:
-  if "script" in i or "compile" in i or "parser" in i:
+  total += engine_stat[i]
+  if i[0] == "s" or i[0] == "c" or i[0] == "p":
     total_script += engine_stat[i]
 
-print "<h2>Engine overview</h2>"
-print "<table>"
-print "<thead><td>Engine</td><td>Percent</td></thead>"
+outfile.write("<h2>Engine overview</h2>\n")
+outfile.write("<table>\n")
+outfile.write("<thead><td>Engine</td><td>Percent</td></thead>\n")
 for i in engine_stat:
-  print "<tr><td>"+str(i)+"</td><td>%.2f%%</td></tr>" % (engine_stat[i]*100./total)
-print "</table>"
+  outfile.write("<tr><td>"+str(names[i])+"</td><td>%.2f%%</td></tr>\n" % (engine_stat[i]*100./total))
+outfile.write("</table>\n")
 
-print "<h2>Script overview</h2>"
-print "<table>"
-print "<thead><td>Script</td><td>Times called</td><td>Times compiled</td><td>Total time</td><td>Time spent</td></thead>"
+outfile.write("<h2>Script overview</h2>\n")
+outfile.write("<table>\n")
+outfile.write("<thead><td>Script</td><td>Times called</td><td>Times compiled</td><td>Total time</td><td>Time spent</td></thead>\n")
 for i in script_stat:
-  # hack since this is actually just overhead
-  if "script " in script_stat[i]:
-    del script_stat[i]["script "]
-
   total = 0
   for j in script_stat[i]:
     total += script_stat[i][j]
 
-  print "<tr><td>"+str(i)+"</td>"
-  print "<td>"+str(script_called[i]["script"])+"</td>"
-  print "<td>"+str(script_called[i]["ion_compile"])+"</td>"
-  print "<td>%.2f%%</td><td>" % (total*100./total_script)
+  outfile.write("<tr><td>"+str(i)+"</td>\n")
+  outfile.write("<td>"+str(script_called[i]["s"])+"</td>\n")
+  outfile.write("<td>"+str(script_called[i]["c"])+"</td>\n")
+  outfile.write("<td>%.2f%%</td><td>\n" % (total*100./total_script))
   for j in script_stat[i]:
-    print j+": %.2f%%, " % (script_stat[i][j]*100./total)
-  print "</td></tr>"
-print "</table>"
+    outfile.write(names[j]+": %.2f%%, \n" % (script_stat[i][j]*100./total))
+  outfile.write("</td></tr>\n")
+outfile.write("</table>\n")
 
-print "</body>"
-print "</html>"
+outfile.write("</body>\n")
+outfile.write("</html>\n")
