@@ -99,15 +99,19 @@ def output(delta, info):
     if "engine" in info:
         engine = info["engine"]
         class_ += " " + engine
-    elif class_ == "s":
+
+    # Don't show entries where the engine isn't set yet.
+    if class_ == "s":
         aggregate = width
         return
 
+    # Don't show entries that are too small.
     if width < 1:
       aggregate = width
       return
-    aggregate = 0
 
+    # Output the current entry:
+    aggregate = 0
     block_width = 10
     blocks = "<span style='width:"+str(width%block_width)+"px'>\n</span>"
     for i in range(int(width/block_width)):
@@ -131,6 +135,7 @@ def keep_stat(delta, info):
   if engine != "" or task != "s":
       engine_stat[statkey] += delta
 
+  # Any script running (if engine is set) / ion compiling / any parsing
   if (task == "s" and engine != "") or task == "c" or task[0] == "p":
       script = info["data"][3]
       script_stat[script][statkey] += delta
@@ -138,6 +143,7 @@ def keep_stat(delta, info):
 script_called = defaultdict(lambda : defaultdict(int))
 def keep_stat_start(info):
   task = info["data"][2]
+  # Any script running / ion compiling / any parsing
   if task == "s" or task == "c" or task[0] == "p":
       script = info["data"][3]
       script_called[script][task] += 1
@@ -155,6 +161,7 @@ for line in fp:
     data = line[:-1].split(",")
     if len(data) < 2:
         continue
+    # Any start/stop or engine change.
     if data[1] == "1" or data[1] == "0" or (data[1] == "e"):
         time = int(data[0])
         if data[1] == "1":
@@ -179,6 +186,7 @@ total = 0
 total_script = 0
 for i in engine_stat:
   total += engine_stat[i]
+  # Any script running / ion compiling / any parsing
   if i[0] == "s" or i[0] == "c" or i[0] == "p":
     total_script += engine_stat[i]
 
