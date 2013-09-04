@@ -36,7 +36,7 @@ names = {
   "s i": "interpreter run",
   "s b": "baseline run",
   "c": "ion compile",
-  "s j": "ion run",
+  "s o": "ion run",
   "r": "yarr",
   "g": "minor_gc",
   "G": "gc",
@@ -47,7 +47,7 @@ names = {
 engines = {
   "i": "Interpreter",
   "b": "Baseline",
-  "j": "IonMonkey",
+  "o": "IonMonkey",
   "": ""
 }
 
