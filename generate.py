@@ -25,6 +25,7 @@ revno = args.revision
 tail = tailer.tail(open(logFilename), 1)[0].split(",")[0]
 ticks = int(tail)
 zoom = pixels*1./ticks
+time = 0
 
 start = 0
 status = ""
@@ -81,18 +82,18 @@ outfile.write("<div class='graph'>\n")
 
 def create_backtrace():
     full_info = ""
-    for i in range(len(stack)):
-        full_info += "; -"+",".join(stack[i]["data"][2:])
-        if "engine" in stack[i]:
-            full_info += " " + engines[stack[i]["engine"]]
+    for entry in stack:
+        full_info += "; -"+",".join(entry["data"][2:])
+        if "engine" in entry:
+            full_info += " " + engines[entry["engine"]]
     return full_info
 
 block_time = 0
 aggregate = 0
 def output(delta, info):
-    global text, block_time,aggregate
+    global text, block_time, aggregate
 
-    width = delta*zoom + aggregate
+    width = delta * zoom + aggregate
 
     class_ = info["data"][2]
     engine = ""
@@ -125,9 +126,14 @@ def output(delta, info):
 from collections import defaultdict
 engine_stat = defaultdict(int)
 script_stat = defaultdict(lambda : defaultdict(int))
+script_called = defaultdict(lambda : defaultdict(int))
+text_dict = {}
+next_text_id = 1
+
 def keep_stat(delta, info):
+  data = info["data"]
   engine = ""
-  task = info["data"][2]
+  task = data[2]
   statkey = task
   if "engine" in info:
       engine = info["engine"]
@@ -137,15 +143,24 @@ def keep_stat(delta, info):
 
   # Any script running (if engine is set) / ion compiling / any parsing
   if (task == "s" and engine != "") or task == "c" or task[0] == "p":
-      script = info["data"][3]
+      script = data[3]
       script_stat[script][statkey] += delta
 
-script_called = defaultdict(lambda : defaultdict(int))
-def keep_stat_start(info):
-  task = info["data"][2]
+def keep_stat_start(data):
+  global next_text_id
+  task = data[2]
   # Any script running / ion compiling / any parsing
   if task == "s" or task == "c" or task[0] == "p":
-      script = info["data"][3]
+      text_id = data[3]
+      if not text_id.isdigit():
+          text = text_id
+          text_id = str(next_text_id)
+          next_text_id += 1
+          text_dict[text_id] = text
+      else:
+          text = text_dict[text_id]
+      number = data[4]
+      script = data[3] = text + ":" + number
       script_called[script][task] += 1
 
 ##################################################""
@@ -166,7 +181,7 @@ for line in fp:
         time = int(data[0])
         if data[1] == "1":
             stack.append({"data":data})
-            keep_stat_start(stack[-1])
+            keep_stat_start(data)
         else:
             output(time-prev_time, stack[-1])
             keep_stat(time-prev_time, stack[-1])
@@ -200,17 +215,18 @@ outfile.write("</table>\n")
 outfile.write("<h2>Script overview</h2>\n")
 outfile.write("<table>\n")
 outfile.write("<thead><td>Script</td><td>Times called</td><td>Times compiled</td><td>Total time</td><td>Time spent</td></thead>\n")
-for i in script_stat:
+for script_location in script_stat:
+  script = script_stat[script_location]
   total = 0
-  for j in script_stat[i]:
-    total += script_stat[i][j]
+  for j in script:
+    total += script[j]
 
-  outfile.write("<tr><td>"+str(i)+"</td>\n")
-  outfile.write("<td>"+str(script_called[i]["s"])+"</td>\n")
-  outfile.write("<td>"+str(script_called[i]["c"])+"</td>\n")
+  outfile.write("<tr><td>" + script_location + "</td>\n")
+  outfile.write("<td>"+str(script_called[script_location]["s"])+"</td>\n")
+  outfile.write("<td>"+str(script_called[script_location]["c"])+"</td>\n")
   outfile.write("<td>%.2f%%</td><td>\n" % (total*100./total_script))
-  for j in script_stat[i]:
-    outfile.write(names[j]+": %.2f%%, \n" % (script_stat[i][j]*100./total))
+  for j in script:
+    outfile.write(names[j]+": %.2f%%, \n" % (script[j]*100./total))
   outfile.write("</td></tr>\n")
 outfile.write("</table>\n")
 
