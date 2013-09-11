@@ -18,7 +18,8 @@ class LogReader:
 
         self.next()
 
-        if "/" in file_:
+        self.name = file_
+        if "/" in self.name:
             self.name = file_.rsplit("/", 1)[1]
         if self.name[-4:] == ".log":
             self.name = self.name[:-4]
