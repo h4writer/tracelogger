@@ -23,6 +23,8 @@ class LogReader:
             self.name = self.name[:-4]
         if self.name == "tracelogging-compile":
             self.name = "Ionmonkey background compilation"
+        elif self.name == "tracelogging-gc":
+            self.name = "GC background"
 
     def increase(self, time):
         self.changed = False
