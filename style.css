@@ -9,8 +9,10 @@ thead { cursor:pointer; }
 
 .breakdown { margin-bottom: 15px; }
 
-.block { display:inline; /*border:1px solid black; margin:1px;*/ cursor:default; } 
-.block span { display:inline-block; height:15px; }
+.container { display:inline-block; border-bottom:1px SOLID #000000; }
+.block { height:15px;cursor:default;display:inline-block;width:inherit;} 
+/*.block span { display:inline-block; height:15px; }*/
+
 
 .ion, .ionmonkey { background-color:#54D93D; border-color:green; } 
 .ion.compile, .ion_compile { background-color:green; } 

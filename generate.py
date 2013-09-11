@@ -22,11 +22,11 @@ pixels = args.width
 bench_name = args.name
 revno = args.revision
 
-ticks = 0
+max_ticks = 0
 for logFilename in logFilenames:
     tail = tailer.tail(open(logFilename), 1)[0].split(",")[0]
-    ticks = max(ticks, int(tail))
-zoom = pixels*1./ticks
+    max_ticks = max(max_ticks, int(tail))
+zoom = pixels*1./max_ticks
 time = 0
 
 start = 0
@@ -41,10 +41,12 @@ else:
     outfile = open(outFilename, 'w')
 
 names = {
+  "n": "nothing run",
+  "s": "script run",
   "s i": "interpreter run",
   "s b": "baseline run",
-  "c": "ion compile",
   "s o": "ion run",
+  "c": "ion compile",
   "r": "yarr",
   "g": "minor_gc",
   "G": "gc",
@@ -96,38 +98,39 @@ def create_backtrace(stack):
     return full_info
 
 block_time = 0
+block_width = 10
 aggregate = 0
-def output(delta, info, stack):
+def output(delta, stacks):
     global text, block_time, aggregate
 
     width = delta * zoom + aggregate
-
-    class_ = info["data"][2]
-    engine = ""
-    if "engine" in info:
-        engine = info["engine"]
-        class_ += " " + engine
-
-    # Don't show entries where the engine isn't set yet.
-    if class_ == "s":
-        aggregate = width
-        return
 
     # Don't show entries that are too small.
     if width < 1:
       aggregate = width
       return
 
-    # Output the current entry:
     aggregate = 0
-    block_width = 10
-    blocks = "<span style='width:"+str(width%block_width)+"px'>\n</span>"
+
+    block = ""
+    for i in range(len(stacks)):
+        stack = stacks[i]
+        info = stack[-1]
+
+        class_ = info["data"][2]
+        engine = ""
+        if "engine" in info:
+            engine = info["engine"]
+            class_ += " " + engine
+
+        full_info = create_backtrace(stack)
+        block += "<span class='block "+names[class_]+"' info='Thread: "+str(i)+";Block: "+str(block_time)+";Engine: "+engines[engine]+";<b>Call stack:</b>"+full_info+"'>\n</span>\n"
+
+    # Output the current entry:
+    outfile.write("<span style='width:"+str(width%block_width)+"px;' class='container'>"+block+"</span>")
     for i in range(int(width/block_width)):
-      blocks += "<span style='width:"+str(block_width)+"px'>\n</span>"
+      outfile.write("<span style='width:"+str(block_width)+"px' class='container'>"+block+"</span>")
 
-    full_info = create_backtrace(stack)
-
-    outfile.write("<span class='block "+names[class_]+"' info='Block: "+str(block_time)+";Engine: "+engines[engine]+";<b>Call stack:</b>"+full_info+"'>"+blocks+"</span>")
     block_time += 1
 
 from collections import defaultdict
@@ -166,7 +169,10 @@ def keep_stat_start(info):
           next_text_id += 1
           text_dict[text_id] = text
       else:
-          text = text_dict[text_id]
+          if text_id in text_dict:
+              text = text_dict[text_id]
+          else:
+              text = "Unrecoverable text"
       number = data[4]
       script = data[3] = text + ":" + number
       script_called[script][task] += 1
@@ -176,7 +182,7 @@ def keep_stat_start(info):
 class LogReader:
 
     def __init__(self, name):
-        self.stack_ = [{"data":["0","1","s"]}]
+        self.stack_ = [{"data":["0","1","n"]}]
         self.time = 0
         self.current_ = None
         self.next_ = None
@@ -187,12 +193,23 @@ class LogReader:
         else:
             self.fp = open(name)
 
+        self.next()
+
+    def increase(self, time):
+        changed = False
+        while time >= self.duration:
+            time -= self.duration
+            self.next()
+            changed = True
+
+        self.duration -= time
+        return changed
+
     def next(self):
         while True:
             try:
                 line = self.fp.next()
                 next_ = line[:-1].split(",")
-                print line,
             except StopIteration:
                 self.done_ = True
                 return
@@ -209,12 +226,18 @@ class LogReader:
             self.next_ = next_
 
             if self.current_ == None:
-                continue
+                self.duration = int(self.next_[0])
+                return
 
             self.duration = int(self.next_[0]) - int(self.current_[0])
 
             if self.isStart():
                 self.stack_.append({"data": self.current_})
+                # Hack to remove unreported engine between starting a script
+                # and logging engine that is running
+                if self.next_[1] == "e" and self.current_[2] == "s":
+                    self.stack_[-1]["engine"] = self.next_[2][0]
+
             else:
                 if self.isEngineChange():
                     self.stack_[-1]["engine"] = self.current_[2][0]
@@ -236,16 +259,40 @@ class LogReader:
     def stack(self):
         return self.stack_
 
+readers = []
 for logFilename in logFilenames:
-    reader = LogReader(logFilename)
-    while not reader.isDone():
-        reader.next()
+    readers.append(LogReader(logFilename))
+
+tick = 0
+while tick < max_ticks:
+    min_duration = max_ticks
+    for reader in readers:
+        if reader.isDone():
+            continue
+        if reader.duration < min_duration:
+            min_duration = reader.duration
+
+    tick += min_duration 
+    output_stack = []
+    for reader in readers:
+        if reader.isDone():
+            output_stack.append([{"data":["0","1","n"]}])
+            continue
+        has_new_data = reader.increase(min_duration)
+        output_stack.append(reader.stack())
+        
+        if not has_new_data:
+            continue
+        # Only keep stats of first reader for now.
+        if readers[0] != reader:
+            continue
 
         if reader.isStart():
             keep_stat_start(reader.info())
-
-        output(reader.duration, reader.info(), reader.stack())
         keep_stat(reader.duration, reader.info())
+
+    output(min_duration, output_stack)
+
 
 ##########################################################
 outfile.write("</div>\n")
