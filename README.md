@@ -9,7 +9,7 @@ This branch contains the python scripts to create a nice graph out of traceloggi
 
 To create a tracelogging graph when you obtained the log file:
 
-    python generate.py [-h] [-w WIDTH] [-n NAME] [-r REVISION] logfile outfile
+    python generate.py [-h] [-w WIDTH] [-n NAME] [-r REVISION] logfile [logfile ...] -o outfile
     
 e.g.
     python generate.py /tmp/tracelogging.log /tmp/test.html
