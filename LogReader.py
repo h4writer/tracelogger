@@ -18,7 +18,8 @@ class LogReader:
 
         self.next()
 
-        self.name = file_.rsplit("/", 1)[1]
+        if "/" in file_:
+            self.name = file_.rsplit("/", 1)[1]
         if self.name[-4:] == ".log":
             self.name = self.name[:-4]
         if self.name == "tracelogging-compile":
