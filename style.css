@@ -10,7 +10,11 @@ thead { cursor:pointer; }
 .breakdown { margin-bottom: 15px; }
 
 .container { display:inline-block; border-bottom:1px SOLID #000000; }
-.block { height:15px;cursor:default;display:inline-block;width:inherit;} 
+.block { height:15px;cursor:default;display:inline-block;width:inherit; } 
+.block.thread1 { display:none; }
+.block.thread2 { display:none; }
+.show_thread1 .block.thread1 { display:inline-block; }
+.show_thread2 .block.thread2 { display:inline-block; }
 /*.block span { display:inline-block; height:15px; }*/
 
 
@@ -27,7 +31,7 @@ thead { cursor:pointer; }
 .parser_lazy { background-color:#A30000; }
 .parser_function { background-color:#CC8585; }
 
-.gc { background-color:#666666; }
+.gc, .gc_allocating, .gc_sweeping{ background-color:#666666; }
 .minor_gc { background-color:#CCCCCC; }
 
 .hover { position:absolute; padding:15px; background-color:white; border: 1px solid black; line-height:1em;}

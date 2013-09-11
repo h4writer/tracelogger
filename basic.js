@@ -30,6 +30,18 @@ document.addEventListener('mousemove',
         }
 },true);
 
+function showThread(id) {
+    var obj = document.getElementById("graph");
+    var class_ = "show_thread"+id;
+
+    if (obj.className.indexOf(class_) !== -1)
+        obj.className = obj.className.replace(class_, "")
+    else
+        obj.className += " show_thread"+id
+}
+
+
+
 /*
   SortTable
   version 2

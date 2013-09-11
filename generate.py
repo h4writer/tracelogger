@@ -1,7 +1,7 @@
 import sys
-import gzip
 import argparse
 import tailer
+from LogReader import LogReader
 
 argparser = argparse.ArgumentParser(description='Parse tracelogs and create html output for them.')
 argparser.add_argument('logfile', nargs='+',
@@ -41,8 +41,8 @@ else:
     outfile = open(outFilename, 'w')
 
 names = {
-  "n": "nothing run",
-  "s": "script run",
+  "n": "nothing",
+  "s": "script",
   "s i": "interpreter run",
   "s b": "baseline run",
   "s o": "ion run",
@@ -50,6 +50,8 @@ names = {
   "r": "yarr",
   "g": "minor_gc",
   "G": "gc",
+  "gA": "gc_allocating",
+  "gS": "gc_sweeping",
   "pf": "parser_function",
   "ps": "parser_script",
   "pl": "parser_lazy",
@@ -61,6 +63,10 @@ engines = {
   "": ""
 }
 
+
+readers = []
+for logFilename in logFilenames:
+    readers.append(LogReader(logFilename))
 
 ###################################################
 outfile.write("<html>\n")
@@ -87,12 +93,18 @@ outfile.write("<p><span class='block parser_lazy'></span> Lazy parsing</p>\n")
 outfile.write("<p><span class='block parser_function'></span> Function parsing</p>\n")
 outfile.write("<!--<div><p>1px = "+str(int(1./zoom))+" kernel ticks</p></div>-->\n")
 outfile.write("</div>\n")
-outfile.write("<div class='graph'>\n")
+
+outfile.write("<div>")
+for i in range(1, len(readers)):
+    outfile.write("<a href='javascript:showThread("+str(i)+")'>Show/hide "+readers[i].name+" thread</a><br />")
+outfile.write("</div>")
+
+outfile.write("<div id='graph'>\n")
 
 def create_backtrace(stack):
     full_info = ""
     for entry in stack:
-        full_info += "; -"+",".join(entry["data"][2:])
+        full_info += "; -"+names[entry["data"][2]]+","+",".join(entry["data"][3:])
         if "engine" in entry:
             full_info += " " + engines[entry["engine"]]
     return full_info
@@ -124,7 +136,7 @@ def output(delta, stacks):
             class_ += " " + engine
 
         full_info = create_backtrace(stack)
-        block += "<span class='block "+names[class_]+"' info='Thread: "+str(i)+";Block: "+str(block_time)+";Engine: "+engines[engine]+";<b>Call stack:</b>"+full_info+"'>\n</span>\n"
+        block += "<span class='block "+names[class_]+" thread"+str(i)+"' info='Thread: "+str(i)+";Block: "+str(block_time)+";Engine: "+engines[engine]+";<b>Call stack:</b>"+full_info+"'>\n</span>\n"
 
     # Output the current entry:
     outfile.write("<span style='width:"+str(width%block_width)+"px;' class='container'>"+block+"</span>")
@@ -179,89 +191,6 @@ def keep_stat_start(info):
 
 ##################################################""
 
-class LogReader:
-
-    def __init__(self, name):
-        self.stack_ = [{"data":["0","1","n"]}]
-        self.time = 0
-        self.current_ = None
-        self.next_ = None
-        self.done_ = False
-
-        if ".gz" in name:
-            self.fp = gzip.open(name)
-        else:
-            self.fp = open(name)
-
-        self.next()
-
-    def increase(self, time):
-        changed = False
-        while time >= self.duration:
-            time -= self.duration
-            self.next()
-            changed = True
-
-        self.duration -= time
-        return changed
-
-    def next(self):
-        while True:
-            try:
-                line = self.fp.next()
-                next_ = line[:-1].split(",")
-            except StopIteration:
-                self.done_ = True
-                return
-            
-            # Only process data with timestamp,event 
-            if len(next_) < 2:
-                continue
-
-            # Only process data for start/stop or engine change.
-            if next_[1] not in ["1","0","e"]:
-                continue
-
-            self.current_ = self.next_
-            self.next_ = next_
-
-            if self.current_ == None:
-                self.duration = int(self.next_[0])
-                return
-
-            self.duration = int(self.next_[0]) - int(self.current_[0])
-
-            if self.isStart():
-                self.stack_.append({"data": self.current_})
-                # Hack to remove unreported engine between starting a script
-                # and logging engine that is running
-                if self.next_[1] == "e" and self.current_[2] == "s":
-                    self.stack_[-1]["engine"] = self.next_[2][0]
-
-            else:
-                if self.isEngineChange():
-                    self.stack_[-1]["engine"] = self.current_[2][0]
-                else:
-                    assert self.isStop()
-                    self.stack_ = self.stack_[:-1]
-            return
-
-    def isStart(self):
-        return self.current_[1] == "1"
-    def isStop(self):
-        return self.current_[1] == "0"
-    def isEngineChange(self):
-        return self.current_[1] == "e"
-    def info(self):
-        return self.stack_[-1]
-    def isDone(self):
-        return self.done_
-    def stack(self):
-        return self.stack_
-
-readers = []
-for logFilename in logFilenames:
-    readers.append(LogReader(logFilename))
 
 tick = 0
 while tick < max_ticks:
@@ -278,10 +207,9 @@ while tick < max_ticks:
         if reader.isDone():
             output_stack.append([{"data":["0","1","n"]}])
             continue
-        has_new_data = reader.increase(min_duration)
         output_stack.append(reader.stack())
         
-        if not has_new_data:
+        if not reader.changed:
             continue
         # Only keep stats of first reader for now.
         if readers[0] != reader:
@@ -292,6 +220,11 @@ while tick < max_ticks:
         keep_stat(reader.duration, reader.info())
 
     output(min_duration, output_stack)
+
+    for reader in readers:
+        if reader.isDone():
+            continue
+        reader.increase(min_duration)
 
 
 ##########################################################
