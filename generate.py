@@ -185,9 +185,11 @@ def keep_stat_start(info):
               text = text_dict[text_id]
           else:
               text = "Unrecoverable text"
-      script = data[3] = text
-      if len(data) >= 5:
-          script += ":"+data[4]
+      data[3] = text
+      if len(data) == 5:
+          data[3] += ":"+data[4]
+      del data[4]
+      script = data[3]
       script_called[script][task] += 1
 
 ##################################################""
