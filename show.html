@@ -1,0 +1,274 @@
+<html>
+<head>
+<script src='/home/h4writer/Build/tracelogger/data2.js'></script>
+<link rel='stylesheet' type='text/css' href='style.css'>
+<link rel='stylesheet' type='text/css' href='style2.css'>
+</head>
+
+<body>
+
+<div id=legend>
+<p><span class='block interpreter run'></span> interpreter</p>
+<p><span class='block ion compile'></span> ionmonkey compilation</p>
+<p><span class='block ion run'></span> ionmonkey running</p>
+<p><span class='block jm run'></span> baseline running</p>
+<p><span class='block yarr jit'></span> yarr jit</p>
+<p><span class='block gc'></span> GC</p>
+<p><span class='block minor_gc'></span> Minor GC</p>
+<p><span class='block parser_script'></span> Script parsing</p>
+<p><span class='block parser_lazy'></span> Lazy parsing</p>
+<p><span class='block parser_function'></span> Function parsing</p>
+</div>
+
+<canvas id="myCanvas" width="1500" height="400" style="border:1px solid #000000;position:relative"></canvas>
+
+<div id='backtrace'></div>
+
+<div id='engineOverview'></div>
+
+<script>
+
+return 1;
+function percent(double) {
+  return Math.round(double*10000)/100;
+}
+
+function DrawCanvas(dom, data) {
+  this.dom = dom;
+  this.ctx = dom.getContext("2d");
+  this.data = data;
+  this.line_height = 400;
+  this.width = dom.width;
+  this.height = Math.floor(dom.height / this.line_height) * this.line_height;
+  this.length_ = this.width * this.height / this.line_height;
+  this.duration = this.data["stop"];
+  this.conversion = this.length_ / this.duration;
+}
+
+DrawCanvas.prototype.drawItem = function(data) {
+  var start = data["start"];
+  var stop = data["stop"];
+  var color = this.color(data["info"]);
+
+  this.drawRect(start, stop, color);
+
+  for (var i = 0; i < data["sub"].length; i++) {
+    this.drawItem(data["sub"][i]);
+  }
+}
+
+DrawCanvas.prototype.drawRect = function(start, stop, color) {
+  var x_start = start * this.conversion;
+  var y_start = Math.floor(x_start / this.width) * this.line_height;
+  x_start = x_start % this.width;
+
+  var x_stop = stop * this.conversion;
+  var y_stop = Math.floor(x_stop / this.width) * this.line_height;
+  x_stop = x_stop % this.width;
+
+
+  this.ctx.fillStyle = color;
+  if (y_start == y_stop) {
+    this.ctx.fillRect(x_start, y_start, x_stop - x_start, this.line_height);
+    return;
+  }
+
+  this.ctx.fillRect(x_start, y_start, this.width - x_start, this.line_height);
+  for (var i = y_start + this.line_height; i < y_stop; i += this.line_height) {
+    this.ctx.fillRect(0, i, this.width, this.line_height);
+  }
+  this.ctx.fillRect(0, y_stop, x_stop, this.line_height);
+}
+
+DrawCanvas.prototype.color = function (info) {
+  var letter = info.substr(0,1);
+  if (letter == "s") {
+    return "#FFFFFF";
+  }
+
+  if (letter == "c")
+    return "green";
+
+  if (letter == "r")
+    return "#BE8CFF";
+
+  if (letter == "g")
+    return "#CCCCCC";
+
+  if (letter == "G")
+    return "#666666";
+
+  if (letter == "i")
+    return "#FFFFFF";
+  if (letter == "b")
+    return "#FFE75E";
+  if (letter == "o")
+    return "#54D93D";
+
+  if (letter == "p") {
+    var type = info.substr(1,1);
+    if (type == "s")
+      return "#DB0000";
+    if (type == "l")
+      return "#A30000";
+    if (type == "f")
+      return "#CC8585";
+  }
+
+  return "white";
+}
+
+DrawCanvas.prototype.backtraceAtPos = function (x, y) {
+  var tick = Math.floor(y / this.line_height) * this.width + x;
+  tick = tick / this.conversion;
+
+  var data = this.data;
+  var bt = []
+  var found = true;
+
+  while (found) {
+    found = false;
+
+    for (var i = 0; i < data["sub"].length; i++) {
+      if (data["sub"][i]["start"] <= tick && data["sub"][i]["stop"] > tick) {
+        data = data["sub"][i]
+        bt[bt.length] = data["info"];
+        found = true
+        break;
+      }
+    }
+  }
+
+  return bt;
+}
+
+DrawCanvas.prototype.draw = function() {
+  for (var i = 0; i < this.data["sub"].length; i++) {
+      this.drawItem(this.data["sub"][i])
+  }
+}
+
+function translate(info) {
+  info = info.split(",")
+  info[0] = translateSubject(info[0]);
+  if (info.length > 1)
+      info[1] = textmap[info[1]]
+  
+  return info.join(", ")
+}
+
+function translateSubject(subject) {
+  switch(subject) {
+    case "i": return "interpreter";
+    case "b": return "baseline";
+    case "o": return "ionmonkey";
+    case "pl": return "lazy parsing";
+    case "ps": return "script parsing";
+    case "pF": return "'Function' parsing";
+    case "s": return "script";
+    case "G": return "GC";
+    case "g": return "Minor GC";
+    case "gS": return "GC sweeping";
+    case "gA": return "GC allocating";
+    case "r": return "regexp";
+    case "c": return "IM compilation";
+  }
+}
+
+function Page() {}
+Page.prototype.init = function() {
+  this.initGraph()
+  this.initEngineOverview()
+  this.initScriptOverview()
+}
+Page.prototype.initGraph = function() {
+  this.canvas = new DrawCanvas(document.getElementById("myCanvas"), data);
+  this.resize();
+  window.onresize = this.resize.bind(this);
+  this.canvas.dom.onclick = this.clickCanvas.bind(this);
+}
+Page.prototype.initEngineOverview = function() {
+  this.engineOverview = {}
+  this.computeEngineOverview(data);
+
+  var dom = document.getElementById("engineOverview");
+  var output = "<h2>Engine Overview</h2>"+
+               "<table><tr><td>Engine</td><td>Percent</td>";
+
+  var total = 0;
+  for (var i in this.engineOverview) {
+    total += this.engineOverview[i];
+  }
+
+  for (var i in this.engineOverview) {
+    output += "<tr><td>"+translateSubject(i)+"</td><td>"+percent(this.engineOverview[i]/total)+"%</td></tr>";
+  }
+  output += "</table>";
+  dom.innerHTML = output;
+}
+Page.prototype.initScriptOverview = function() {
+
+}
+Page.prototype.computeEngineOverview = function(data) {
+  var time = data.stop - data.start;
+
+  if (time < 0)
+    throw "negative time";
+
+  for (var i = 0; i < data.sub.length; i++) {
+    time -= data.sub[i].stop - data.sub[i].start;
+    this.computeEngineOverview(data.sub[i])
+
+    if (time < 0)
+      throw "negative time";
+  }
+  
+  var info = data.info.split(",")
+  if (!this.engineOverview[info[0]])
+    this.engineOverview[info[0]] = 0
+  this.engineOverview[info[0]] += time;
+}
+Page.prototype.resize = function() {
+  this.canvas.dom.width = (document.body.clientWidth - 350)
+  this.canvas.draw();
+}
+Page.prototype.clickCanvas = function(e) {
+    var posx = 0;
+    var posy = 0;
+    if (!e) var e = window.event;
+    if (e.offsetX || e.offsetY) {
+        posx = e.offsetX;
+        posy = e.offsetY;
+    }
+    else if (e.layerX || e.layerY) {
+        posx = e.layerX;
+        posy = e.layerY;
+    }
+
+    var backtrace = this.canvas.backtraceAtPos(posx, posy);
+    var output = "";
+    for (var i=0; i < backtrace.length; i++) {
+      var info = backtrace[i].split(",")
+      if (info[0] == "s" || info[0] == "c" || info[0] == "pl" || info[0] == "ps" || info[0] == "pF") {
+        var out = translate(backtrace[i]).split(", ")
+        var file = out[1]
+        file = file.split("/")
+        out[1] = "<span title='"+out[1]+"'>"+file[file.length-1]+"</span>";
+        output += out.join(", ")+"<br />";
+
+        if (backtrace[i].substring(0,1) == "s")
+          i++;
+      } else {
+        output += translate(backtrace[i])+"<br />";
+      }
+    }
+    document.getElementById("backtrace").innerHTML = output;
+}
+
+var page = new Page();
+page.init()
+</script>
+
+</body>
+
+</html>
