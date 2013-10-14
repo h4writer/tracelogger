@@ -43,7 +43,16 @@ class LogReader:
                 line = self.fp.next()
                 next_ = line[:-1].split(",")
             except StopIteration:
-                self.done_ = True
+                # file ends in newline (so last stop is already executed)
+                if self.next_ == None:
+                  self.done_ = True
+                  return
+                
+                # file ends in stop statement
+                self.current_ = self.next_
+                self.next_ = None
+                assert self.isStop()
+                self.stack_ = self.stack_[:-1]
                 return
             
             # Only process data with timestamp,event 
