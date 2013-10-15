@@ -25,6 +25,7 @@
 <div id='backtrace'></div>
 
 <div id='engineOverview'></div>
+<div id='scriptOverview'></div>
 
 <script>
 var tree = undefined;
@@ -138,6 +139,33 @@ DataTree.prototype.childs = function(id) {
     i = this.nextId(i);
   }
   return childs;
+}
+
+DataTree.prototype.backtrace = function (id) {
+  var tick = this.start(id);
+  var cid = 0;
+  var bt = []
+  var found = true;
+
+  while (found) {
+    found = false;
+
+    var childs = this.childs(cid);
+    for (var i = 0; i < childs.length; i++) {
+      if (this.start(childs[i]) <= tick && this.stop(childs[i]) > tick) {
+        cid = childs[i]
+        if (cid == id)
+          return bt;
+
+        bt[bt.length] = id;
+        found = true
+        break;
+      }
+    }
+  }
+
+  console.log("Shouldn't reach this.");
+  return [];
 }
 
 function percent(double) {
@@ -335,8 +363,10 @@ Page.prototype.initGraph = function() {
 }
 Page.prototype.initEngineOverview = function() {
   this.engineOverview = {}
+  this.scriptOverview = {}
+  this.scriptTimes = {}
   
-  this.processQueue = [0]
+  this.processQueue = [["",0]]
   this.futureProcessQueue = []
   this.processThreshold = (tree.stop(0) - tree.start(0));
   this.processEngineOverviewQueue();
@@ -347,7 +377,7 @@ Page.prototype.initScriptOverview = function() {
 Page.prototype.processEngineOverviewQueue = function () {
   var queue = this.processQueue.splice(0,10000);
   for (var i=0; i<queue.length; i++) {
-    this.computeEngineOverview(queue[i])
+    this.computeEngineOverview(queue[i][0], queue[i][1])
   }
 
   var dom = document.getElementById("engineOverview");
@@ -365,6 +395,23 @@ Page.prototype.processEngineOverviewQueue = function () {
   output += "</table>";
   dom.innerHTML = output;
 
+  dom = document.getElementById("scriptOverview");
+  var output = "<h2>Script Overview</h2>"+
+               "<table><tr><td>Script</td><td>Times called</td><td>Times compiled</td><td>Total time</td><td>Spend time</td></tr>";
+  for (var script in this.scriptOverview) {
+    output += "<tr><td>"+script+"</td><td>"+this.scriptTimes[script]["s"]+"</td><td>"+this.scriptTimes[script]["c"]+"</td><td></td><td>";
+    var script_total = 0;
+    for (var j in this.scriptOverview[script]) {
+      script_total += this.scriptOverview[script][j];
+    }
+    for (var j in this.scriptOverview[script]) {
+      output += ""+translateSubject(j)+": "+percent(this.scriptOverview[script][j]/script_total)+"%, ";
+    }
+    output += "</td></tr>"
+  }
+  output += "</table>"
+  dom.innerHTML = output;
+
   if (this.processQueue.length > 0) {
     this.timer = setTimeout(Page.prototype.processEngineOverviewQueue.bind(this), 1);
     return;
@@ -378,8 +425,14 @@ Page.prototype.processEngineOverviewQueue = function () {
     return;
   }
 }
-Page.prototype.computeEngineOverview = function(id) {
+Page.prototype.computeEngineOverview = function(script, id) {
   var time = tree.stop(id) - tree.start(id);
+  var info = textmap[tree.textId(id)].split(",");
+
+  if (info[0] == "G" || info[0] == "g")
+    script = "";
+  else if (info[0] == "c" || info[0] == "ps" || info[0] == "pf" || info[0] == "pl" || info[0] == "G" || info[0] == "g" || info[0] == "s")
+    script = info[1]+":"+info[2];
 
   if (time < 0)
     throw "negative time";
@@ -390,19 +443,38 @@ Page.prototype.computeEngineOverview = function(id) {
     time -= childTime;
 
     if (childTime < this.processThreshold) {
-      this.futureProcessQueue[this.futureProcessQueue.length] = childs[i]
+      this.futureProcessQueue[this.futureProcessQueue.length] = [script, childs[i]]
     } else {
-      this.computeEngineOverview(childs[i])
+      this.computeEngineOverview(script, childs[i])
     }
 
     if (time < 0)
       throw "negative time";
   }
-  
-  var info = textmap[tree.textId(id)].split(",")
-  if (!this.engineOverview[info[0]])
-    this.engineOverview[info[0]] = 0
-  this.engineOverview[info[0]] += time;
+
+  if (time > 0) {
+    if (!this.engineOverview[info[0]])
+      this.engineOverview[info[0]] = 0
+    this.engineOverview[info[0]] += time;
+  }
+
+  if (script != "") {
+    if (!this.scriptOverview[script]) {
+      this.scriptOverview[script] = {};
+      this.scriptTimes[script] = {};
+    }
+    if (!this.scriptOverview[script]["c"])
+      this.scriptTimes[script]["c"] = 0;
+    if (!this.scriptOverview[script]["s"])
+      this.scriptTimes[script]["s"] = 0;
+    if (info[0] == "c" || info[0] == "s")
+      this.scriptTimes[script][info[0]] += 1;
+    if (info[0] != "s") {
+      if (!this.scriptOverview[script][info[0]])
+        this.scriptOverview[script][info[0]] = 0;
+      this.scriptOverview[script][info[0]] += time;
+    }
+  }
 }
 Page.prototype.resize = function() {
   this.canvas.dom.width = (document.body.clientWidth - 350)
