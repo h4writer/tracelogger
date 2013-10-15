@@ -140,7 +140,6 @@ DrawCanvas.prototype.drawItem = function(id) {
   var stop = this.tree.stop(id);
   var color = this.color(textmap[this.tree.textId(id)]);
 
-  // Don't draw children if parent isn't visible
   if (!this.drawRect(start, stop, color)) {
     this.futureDrawQueue[this.futureDrawQueue.length] = id
     return;
@@ -316,7 +315,20 @@ Page.prototype.initGraph = function() {
 }
 Page.prototype.initEngineOverview = function() {
   this.engineOverview = {}
-  this.computeEngineOverview(data);
+  
+  this.processQueue = [0]
+  this.futureProcessQueue = []
+  this.processThreshold = (tree.stop(0) - tree.start(0));
+  this.processEngineOverviewQueue();
+}
+Page.prototype.initScriptOverview = function() {
+  
+}
+Page.prototype.processEngineOverviewQueue = function () {
+  var queue = this.processQueue.splice(0,10000);
+  for (var i=0; i<queue.length; i++) {
+    this.computeEngineOverview(queue[i])
+  }
 
   var dom = document.getElementById("engineOverview");
   var output = "<h2>Engine Overview</h2>"+
@@ -332,9 +344,19 @@ Page.prototype.initEngineOverview = function() {
   }
   output += "</table>";
   dom.innerHTML = output;
-}
-Page.prototype.initScriptOverview = function() {
 
+  if (this.processQueue.length > 0) {
+    this.timer = setTimeout(Page.prototype.processEngineOverviewQueue.bind(this), 1);
+    return;
+  }
+
+  if (this.futureProcessQueue.length > 0) {
+    this.processQueue = this.futureProcessQueue;
+    this.futureProcessQueue = []
+    this.processThreshold = this.processThreshold / 2
+    this.timer = setTimeout(Page.prototype.processEngineOverviewQueue.bind(this), 1);
+    return;
+  }
 }
 Page.prototype.computeEngineOverview = function(id) {
   var time = tree.stop(id) - tree.start(id);
@@ -342,10 +364,16 @@ Page.prototype.computeEngineOverview = function(id) {
   if (time < 0)
     throw "negative time";
 
-  var childs = tree.childs(0);
+  var childs = tree.childs(id);
   for (var i = 0; i < childs.length; i++) {
-    time -= tree.stop(childs[i]) - tree.start(childs[i]);
-    this.computeEngineOverview(childs[i])
+    var childTime = tree.stop(childs[i]) - tree.start(childs[i]);
+    time -= childTime;
+
+    if (childTime < this.processThreshold) {
+      this.futureProcessQueue[this.futureProcessQueue.length] = childs[i]
+    } else {
+      this.computeEngineOverview(childs[i])
+    }
 
     if (time < 0)
       throw "negative time";
