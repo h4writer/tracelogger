@@ -1,6 +1,6 @@
 <html>
 <head>
-<script src='/home/h4writer/Build/tracelogger/data2.js'></script>
+<script src='data3.js'></script>
 <link rel='stylesheet' type='text/css' href='style.css'>
 <link rel='stylesheet' type='text/css' href='style2.css'>
 </head>
@@ -27,33 +27,126 @@
 <div id='engineOverview'></div>
 
 <script>
+var tree = undefined;
+var page = undefined;
+var textmap = undefined;
 
-return 1;
+var xhr = new XMLHttpRequest();
+xhr.open('GET', data["dict"], true);
+
+xhr.onload = function(e) {
+  textmap = JSON.parse(this.response);
+
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET', data["tree"], true);
+  xhr.responseType = 'arraybuffer';
+
+  xhr.onload = function(e) {
+    tree = new DataTree(this.response);
+    page = new Page();
+    page.init()
+  };
+
+  xhr.send();
+};
+
+xhr.send();
+
+
+function DataTree(buffer) {
+  this.buffer = buffer;
+  this.view = new DataView(buffer);
+
+  /* start: 8bytes
+  /* stop: 8bytes
+   * textId: 4bytes
+   * childs: 4bytes
+   */
+  this.itemSize = 8+8+4+4;
+}
+
+DataTree.prototype.head = function() {
+  return 0;
+}
+
+DataTree.prototype.start = function(id) {
+  var p1 = this.view.getUint32(id * this.itemSize);
+  var p2 = this.view.getUint32(id * this.itemSize + 4);
+  return p1*4294967295+p2
+}
+
+DataTree.prototype.stop = function(id) {
+  var p1 = this.view.getUint32(id * this.itemSize + 8);
+  var p2 = this.view.getUint32(id * this.itemSize + 12);
+  return p1*4294967295+p2
+}
+
+DataTree.prototype.textId = function(id) {
+  var value = this.view.getUint32(id * this.itemSize + 16);
+  return value >>> 1
+}
+
+DataTree.prototype.nextId = function(id) {
+  return this.view.getUint32(id * this.itemSize + 20);
+}
+
+DataTree.prototype.hasNextId = function(id) {
+  return this.nextId(id) != 0;
+}
+
+DataTree.prototype.hasChilds = function(id) {
+  var value = this.view.getUint32(id * this.itemSize + 16);
+  return value%2 == 1
+}
+
+DataTree.prototype.firstChild = function(id) {
+  return id + 1;
+}
+
+DataTree.prototype.childs = function(id) {
+  if (!this.hasChilds(id))
+    return [];
+
+  var childs = []  
+  var i = this.firstChild(id);
+  while (true) {
+    childs[childs.length] = i;
+
+    if (!this.hasNextId(i))
+      break;
+
+    i = this.nextId(i);
+  }
+  return childs;
+}
+
 function percent(double) {
   return Math.round(double*10000)/100;
 }
 
-function DrawCanvas(dom, data) {
+function DrawCanvas(dom, tree) {
   this.dom = dom;
   this.ctx = dom.getContext("2d");
-  this.data = data;
-  this.line_height = 400;
-  this.width = dom.width;
-  this.height = Math.floor(dom.height / this.line_height) * this.line_height;
-  this.length_ = this.width * this.height / this.line_height;
-  this.duration = this.data["stop"];
-  this.conversion = this.length_ / this.duration;
+  this.tree = tree;
+  this.line_height = 10;
+  this.duration = this.tree.stop(0);
+
+  this.drawQueue = []
+  this.drawThreshold = 1
 }
 
-DrawCanvas.prototype.drawItem = function(data) {
-  var start = data["start"];
-  var stop = data["stop"];
-  var color = this.color(data["info"]);
+DrawCanvas.prototype.drawItem = function(id) {
+  var start = this.tree.start(id);
+  var stop = this.tree.stop(id);
+  var color = this.color(textmap[this.tree.textId(id)]);
 
-  this.drawRect(start, stop, color);
+  // Don't draw children if parent isn't visible
+  if (!this.drawRect(start, stop, color))
+    return;
 
-  for (var i = 0; i < data["sub"].length; i++) {
-    this.drawItem(data["sub"][i]);
+  var childs = this.tree.childs(id);
+  for (var i = 0; i < childs.length; i++) {
+    this.drawItem(childs[i]);
   }
 }
 
@@ -69,8 +162,11 @@ DrawCanvas.prototype.drawRect = function(start, stop, color) {
 
   this.ctx.fillStyle = color;
   if (y_start == y_stop) {
+    if (x_stop - x_start < 0.1)
+      return false;
+
     this.ctx.fillRect(x_start, y_start, x_stop - x_start, this.line_height);
-    return;
+    return true;
   }
 
   this.ctx.fillRect(x_start, y_start, this.width - x_start, this.line_height);
@@ -78,6 +174,7 @@ DrawCanvas.prototype.drawRect = function(start, stop, color) {
     this.ctx.fillRect(0, i, this.width, this.line_height);
   }
   this.ctx.fillRect(0, y_stop, x_stop, this.line_height);
+  return true;
 }
 
 DrawCanvas.prototype.color = function (info) {
@@ -122,17 +219,18 @@ DrawCanvas.prototype.backtraceAtPos = function (x, y) {
   var tick = Math.floor(y / this.line_height) * this.width + x;
   tick = tick / this.conversion;
 
-  var data = this.data;
+  var id = 0;
   var bt = []
   var found = true;
 
   while (found) {
     found = false;
 
-    for (var i = 0; i < data["sub"].length; i++) {
-      if (data["sub"][i]["start"] <= tick && data["sub"][i]["stop"] > tick) {
-        data = data["sub"][i]
-        bt[bt.length] = data["info"];
+    var childs = this.tree.childs(id);
+    for (var i = 0; i < childs.length; i++) {
+      if (this.tree.start(childs[i]) <= tick && this.tree.stop(childs[i]) > tick) {
+        id = childs[i]
+        bt[bt.length] = textmap[this.tree.textId(id)];
         found = true
         break;
       }
@@ -143,17 +241,20 @@ DrawCanvas.prototype.backtraceAtPos = function (x, y) {
 }
 
 DrawCanvas.prototype.draw = function() {
-  for (var i = 0; i < this.data["sub"].length; i++) {
-      this.drawItem(this.data["sub"][i])
+  this.width = this.dom.width;
+  this.height = Math.floor(this.dom.height / this.line_height) * this.line_height;
+  this.length_ = this.width * this.height / this.line_height;
+  this.conversion = this.length_ / this.duration;
+
+  var childs = this.tree.childs(0);
+  for (var i=0; i<childs.length; i++) {
+    this.drawItem(childs[i])
   }
 }
 
 function translate(info) {
   info = info.split(",")
   info[0] = translateSubject(info[0]);
-  if (info.length > 1)
-      info[1] = textmap[info[1]]
-  
   return info.join(", ")
 }
 
@@ -182,7 +283,7 @@ Page.prototype.init = function() {
   this.initScriptOverview()
 }
 Page.prototype.initGraph = function() {
-  this.canvas = new DrawCanvas(document.getElementById("myCanvas"), data);
+  this.canvas = new DrawCanvas(document.getElementById("myCanvas"), tree);
   this.resize();
   window.onresize = this.resize.bind(this);
   this.canvas.dom.onclick = this.clickCanvas.bind(this);
@@ -209,21 +310,22 @@ Page.prototype.initEngineOverview = function() {
 Page.prototype.initScriptOverview = function() {
 
 }
-Page.prototype.computeEngineOverview = function(data) {
-  var time = data.stop - data.start;
+Page.prototype.computeEngineOverview = function(id) {
+  var time = tree.stop(id) - tree.start(id);
 
   if (time < 0)
     throw "negative time";
 
-  for (var i = 0; i < data.sub.length; i++) {
-    time -= data.sub[i].stop - data.sub[i].start;
-    this.computeEngineOverview(data.sub[i])
+  var childs = tree.childs(0);
+  for (var i = 0; i < childs.length; i++) {
+    time -= tree.stop(childs[i]) - tree.start(childs[i]);
+    this.computeEngineOverview(childs[i])
 
     if (time < 0)
       throw "negative time";
   }
   
-  var info = data.info.split(",")
+  var info = textmap[tree.textId(id)].split(",")
   if (!this.engineOverview[info[0]])
     this.engineOverview[info[0]] = 0
   this.engineOverview[info[0]] += time;
@@ -264,9 +366,6 @@ Page.prototype.clickCanvas = function(e) {
     }
     document.getElementById("backtrace").innerHTML = output;
 }
-
-var page = new Page();
-page.init()
 </script>
 
 </body>
