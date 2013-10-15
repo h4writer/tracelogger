@@ -141,8 +141,10 @@ DrawCanvas.prototype.drawItem = function(id) {
   var color = this.color(textmap[this.tree.textId(id)]);
 
   // Don't draw children if parent isn't visible
-  if (!this.drawRect(start, stop, color))
+  if (!this.drawRect(start, stop, color)) {
+    this.futureDrawQueue[this.futureDrawQueue.length] = id
     return;
+  }
 
   var childs = this.tree.childs(id);
   for (var i = 0; i < childs.length; i++) {
@@ -162,7 +164,7 @@ DrawCanvas.prototype.drawRect = function(start, stop, color) {
 
   this.ctx.fillStyle = color;
   if (y_start == y_stop) {
-    if (x_stop - x_start < 0.1)
+    if (x_stop - x_start < this.drawThreshold)
       return false;
 
     this.ctx.fillRect(x_start, y_start, x_stop - x_start, this.line_height);
@@ -246,9 +248,33 @@ DrawCanvas.prototype.draw = function() {
   this.length_ = this.width * this.height / this.line_height;
   this.conversion = this.length_ / this.duration;
 
-  var childs = this.tree.childs(0);
-  for (var i=0; i<childs.length; i++) {
-    this.drawItem(childs[i])
+  this.drawThreshold = 5
+  this.drawQueue = this.tree.childs(0);
+  this.futureDrawQueue = []
+
+  clearTimeout(this.timer);
+  this.timer = setTimeout(DrawCanvas.prototype.drawQueue.bind(this), 1);
+}
+
+DrawCanvas.prototype.drawQueue = function() {
+  var queue = this.drawQueue.splice(0,10000);
+  for (var i=0; i<queue.length; i++) {
+    this.drawItem(queue[i])
+  }
+
+  if (this.drawQueue.length > 0) {
+    this.timer = setTimeout(DrawCanvas.prototype.drawQueue.bind(this), 1);
+    return;
+  }
+
+  if (this.futureDrawQueue.length > 0) {
+    this.drawQueue = this.futureDrawQueue;
+    this.futureDrawQueue = []
+    if (this.drawThreshold < 0.05)
+      return;
+    this.drawThreshold = this.drawThreshold / 2
+    this.timer = setTimeout(DrawCanvas.prototype.drawQueue.bind(this), 1);
+    return;
   }
 }
 
