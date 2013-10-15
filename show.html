@@ -56,11 +56,31 @@ xhr.send();
 function DataTree(buffer) {
   this.buffer = buffer;
   this.view = new DataView(buffer);
-
-  /* start: 8bytes
-  /* stop: 8bytes
-   * textId: 4bytes
-   * childs: 4bytes
+  /* Tree is saved like:
+   *
+   * [position: start, stop, textId, hasChilds, nextId]
+   *
+   * - position: is the position in the binary file (is not saved, reported here to understand the tree better).
+   * - start: a timestamp
+   * - stop: a timestamp
+   * - textId: refers to the information
+   * - hasChilds: if this leaf has a child (if it does, the first child is located at position+1)
+   * - nextId: refers to the next child of the parent node.
+   *
+   *                                          [0: ..., ..., ..., 1, 0]
+   *                                           |
+   *                     [1: ..., ..., ..., 1, 10] ---> [10: ..., ..., ..., 1, 12] ---> [12: ..., ..., ..., 0, 0]
+   *                       |                             |
+   *  [2: ..., ..., ..., 1, 2]                    [11: ..., ..., ..., 0, 0]
+   *   |
+   *  ...
+   *
+   * default layout:
+   * start: 64bits
+   * stop: 64bits
+   * textId: 31bits
+   * hasChilds: 1bit
+   * nextId: 32bits
    */
   this.itemSize = 8+8+4+4;
 }
