@@ -349,6 +349,11 @@ function translateSubject(subject) {
   }
 }
 
+function translateScript(script) {
+  var arr = script.split("/");
+  return "<span title='"+script+"'>"+arr[arr.length-1]+"</span>";
+}
+
 function Page() {}
 Page.prototype.init = function() {
   this.initGraph()
@@ -399,7 +404,7 @@ Page.prototype.processEngineOverviewQueue = function () {
   var output = "<h2>Script Overview</h2>"+
                "<table><tr><td>Script</td><td>Times called</td><td>Times compiled</td><td>Total time</td><td>Spend time</td></tr>";
   for (var script in this.scriptOverview) {
-    output += "<tr><td>"+script+"</td><td>"+this.scriptTimes[script]["s"]+"</td><td>"+this.scriptTimes[script]["c"]+"</td><td></td><td>";
+    output += "<tr><td>"+translateScript(script)+"</td><td>"+this.scriptTimes[script]["s"]+"</td><td>"+this.scriptTimes[script]["c"]+"</td><td></td><td>";
     var script_total = 0;
     for (var j in this.scriptOverview[script]) {
       script_total += this.scriptOverview[script][j];
@@ -499,9 +504,7 @@ Page.prototype.clickCanvas = function(e) {
       var info = backtrace[i].split(",")
       if (info[0] == "s" || info[0] == "c" || info[0] == "pl" || info[0] == "ps" || info[0] == "pF") {
         var out = translate(backtrace[i]).split(", ")
-        var file = out[1]
-        file = file.split("/")
-        out[1] = "<span title='"+out[1]+"'>"+file[file.length-1]+"</span>";
+        out[1] = translateScript(out[1]);
         output += out.join(", ")+"<br />";
 
         if (backtrace[i].substring(0,1) == "s")
