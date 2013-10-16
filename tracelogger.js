@@ -1,33 +1,3 @@
-<html>
-<head>
-<script src='data3.js'></script>
-<link rel='stylesheet' type='text/css' href='style.css'>
-<link rel='stylesheet' type='text/css' href='style2.css'>
-</head>
-
-<body>
-
-<div id=legend>
-<p><span class='block interpreter run'></span> interpreter</p>
-<p><span class='block ion compile'></span> ionmonkey compilation</p>
-<p><span class='block ion run'></span> ionmonkey running</p>
-<p><span class='block jm run'></span> baseline running</p>
-<p><span class='block yarr jit'></span> yarr jit</p>
-<p><span class='block gc'></span> GC</p>
-<p><span class='block minor_gc'></span> Minor GC</p>
-<p><span class='block parser_script'></span> Script parsing</p>
-<p><span class='block parser_lazy'></span> Lazy parsing</p>
-<p><span class='block parser_function'></span> Function parsing</p>
-</div>
-
-<canvas id="myCanvas" width="1500" height="400" style="border:1px solid #000000;position:relative"></canvas>
-
-<div id='backtrace'></div>
-
-<div id='engineOverview'></div>
-<div id='scriptOverview'></div>
-
-<script>
 var tree = undefined;
 var page = undefined;
 var textmap = undefined;
@@ -484,8 +454,3 @@ Page.prototype.clickCanvas = function(e) {
     }
     document.getElementById("backtrace").innerHTML = output;
 }
-</script>
-
-</body>
-
-</html>
