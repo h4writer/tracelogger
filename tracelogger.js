@@ -1,19 +1,18 @@
 var tree = undefined;
 var page = undefined;
-var textmap = undefined;
 
 var xhr = new XMLHttpRequest();
 xhr.open('GET', data["dict"], true);
 
 xhr.onload = function(e) {
-  textmap = JSON.parse(this.response);
+  var textmap = JSON.parse(this.response);
 
   var xhr = new XMLHttpRequest();
   xhr.open('GET', data["tree"], true);
   xhr.responseType = 'arraybuffer';
 
   xhr.onload = function(e) {
-    tree = new DataTree(this.response);
+    tree = new DataTree(this.response, textmap);
     page = new Page();
     page.init()
   };
@@ -22,94 +21,6 @@ xhr.onload = function(e) {
 };
 
 xhr.send();
-
-
-function DataTree(buffer) {
-  this.buffer = buffer;
-  this.view = new DataView(buffer);
-  /* Tree is saved like:
-   *
-   * [position: start, stop, textId, hasChilds, nextId]
-   *
-   * - position: is the position in the binary file (is not saved, reported here to understand the tree better).
-   * - start: a timestamp
-   * - stop: a timestamp
-   * - textId: refers to the information
-   * - hasChilds: if this leaf has a child (if it does, the first child is located at position+1)
-   * - nextId: refers to the next child of the parent node.
-   *
-   *                                          [0: ..., ..., ..., 1, 0]
-   *                                           |
-   *                     [1: ..., ..., ..., 1, 10] ---> [10: ..., ..., ..., 1, 12] ---> [12: ..., ..., ..., 0, 0]
-   *                       |                             |
-   *  [2: ..., ..., ..., 1, 2]                    [11: ..., ..., ..., 0, 0]
-   *   |
-   *  ...
-   *
-   * default layout:
-   * start: 64bits
-   * stop: 64bits
-   * textId: 31bits
-   * hasChilds: 1bit
-   * nextId: 32bits
-   */
-  this.itemSize = 8+8+4+4;
-}
-
-DataTree.prototype.head = function() {
-  return 0;
-}
-
-DataTree.prototype.start = function(id) {
-  var p1 = this.view.getUint32(id * this.itemSize);
-  var p2 = this.view.getUint32(id * this.itemSize + 4);
-  return p1*4294967295+p2
-}
-
-DataTree.prototype.stop = function(id) {
-  var p1 = this.view.getUint32(id * this.itemSize + 8);
-  var p2 = this.view.getUint32(id * this.itemSize + 12);
-  return p1*4294967295+p2
-}
-
-DataTree.prototype.textId = function(id) {
-  var value = this.view.getUint32(id * this.itemSize + 16);
-  return value >>> 1
-}
-
-DataTree.prototype.nextId = function(id) {
-  return this.view.getUint32(id * this.itemSize + 20);
-}
-
-DataTree.prototype.hasNextId = function(id) {
-  return this.nextId(id) != 0;
-}
-
-DataTree.prototype.hasChilds = function(id) {
-  var value = this.view.getUint32(id * this.itemSize + 16);
-  return value%2 == 1
-}
-
-DataTree.prototype.firstChild = function(id) {
-  return id + 1;
-}
-
-DataTree.prototype.childs = function(id) {
-  if (!this.hasChilds(id))
-    return [];
-
-  var childs = []  
-  var i = this.firstChild(id);
-  while (true) {
-    childs[childs.length] = i;
-
-    if (!this.hasNextId(i))
-      break;
-
-    i = this.nextId(i);
-  }
-  return childs;
-}
 
 function percent(double) {
   return Math.round(double*10000)/100;
@@ -129,7 +40,7 @@ function DrawCanvas(dom, tree) {
 DrawCanvas.prototype.drawItem = function(id) {
   var start = this.tree.start(id);
   var stop = this.tree.stop(id);
-  var color = this.color(textmap[this.tree.textId(id)]);
+  var color = this.color(this.tree.text(id));
 
   if (!this.drawRect(start, stop, color)) {
     this.futureDrawQueue[this.futureDrawQueue.length] = id
@@ -222,7 +133,7 @@ DrawCanvas.prototype.backtraceAtPos = function (x, y) {
     for (var i = 0; i < childs.length; i++) {
       if (this.tree.start(childs[i]) <= tick && this.tree.stop(childs[i]) > tick) {
         id = childs[i]
-        bt[bt.length] = textmap[this.tree.textId(id)];
+        bt[bt.length] = this.tree.text(id);
         found = true
         break;
       }
@@ -300,45 +211,41 @@ function translateScript(script) {
 function Page() {}
 Page.prototype.init = function() {
   this.initGraph()
-  this.initEngineOverview()
-  this.initScriptOverview()
+  this.initOverview()
 }
+
 Page.prototype.initGraph = function() {
   this.canvas = new DrawCanvas(document.getElementById("myCanvas"), tree);
   this.resize();
   window.onresize = this.resize.bind(this);
   this.canvas.dom.onclick = this.clickCanvas.bind(this);
 }
-Page.prototype.initEngineOverview = function() {
-  this.engineOverview = {}
-  this.scriptOverview = {}
-  this.scriptTimes = {}
-  
-  this.processQueue = [["",0]]
-  this.futureProcessQueue = []
-  this.processThreshold = (tree.stop(0) - tree.start(0));
-  this.processOverviewQueue();
-}
-Page.prototype.initScriptOverview = function() {
-  
-}
-Page.prototype.processOverviewQueue = function () {
-  var queue = this.processQueue.splice(0,10000);
-  for (var i=0; i<queue.length; i++) {
-    this.computeOverview(queue[i][0], queue[i][1])
-  }
 
+Page.prototype.resize = function() {
+  this.canvas.dom.width = (document.body.clientWidth - 350)
+  this.canvas.draw();
+}
+
+Page.prototype.initOverview = function() {
+  this.overview = new Overview(tree, {
+    chunk_cb: Page.prototype.computeOverview.bind(this)
+  });
+
+  this.overview.init();
+}
+
+Page.prototype.computeOverview = function () {
   var dom = document.getElementById("engineOverview");
   var output = "<h2>Engine Overview</h2>"+
                "<table><tr><td>Engine</td><td>Percent</td>";
 
   var total = 0;
-  for (var i in this.engineOverview) {
-    total += this.engineOverview[i];
+  for (var i in this.overview.engineOverview) {
+    total += this.overview.engineOverview[i];
   }
 
-  for (var i in this.engineOverview) {
-    output += "<tr><td>"+translateSubject(i)+"</td><td>"+percent(this.engineOverview[i]/total)+"%</td></tr>";
+  for (var i in this.overview.engineOverview) {
+    output += "<tr><td>"+translateSubject(i)+"</td><td>"+percent(this.overview.engineOverview[i]/total)+"%</td></tr>";
   }
   output += "</table>";
   dom.innerHTML = output;
@@ -346,85 +253,22 @@ Page.prototype.processOverviewQueue = function () {
   dom = document.getElementById("scriptOverview");
   var output = "<h2>Script Overview</h2>"+
                "<table><tr><td>Script</td><td>Times called</td><td>Times compiled</td><td>Total time</td><td>Spend time</td></tr>";
-  for (var script in this.scriptOverview) {
-    output += "<tr><td>"+translateScript(script)+"</td><td>"+this.scriptTimes[script]["s"]+"</td><td>"+this.scriptTimes[script]["c"]+"</td><td>";
+  for (var script in this.overview.scriptOverview) {
+    output += "<tr><td>"+translateScript(script)+"</td><td>"+this.overview.scriptTimes[script]["s"]+"</td><td>"+this.overview.scriptTimes[script]["c"]+"</td><td>";
     var script_total = 0;
-    for (var j in this.scriptOverview[script]) {
-      script_total += this.scriptOverview[script][j];
+    for (var j in this.overview.scriptOverview[script]) {
+      script_total += this.overview.scriptOverview[script][j];
     }
     output += percent(script_total/total)+"%</td><td>";
-    for (var j in this.scriptOverview[script]) {
-      output += ""+translateSubject(j)+": "+percent(this.scriptOverview[script][j]/script_total)+"%, ";
+    for (var j in this.overview.scriptOverview[script]) {
+      output += ""+translateSubject(j)+": "+percent(this.overview.scriptOverview[script][j]/script_total)+"%, ";
     }
     output += "</td></tr>"
   }
   output += "</table>"
   dom.innerHTML = output;
-
-  if (this.processQueue.length > 0) {
-    this.timer = setTimeout(Page.prototype.processOverviewQueue.bind(this), 1);
-    return;
-  }
-
-  if (this.futureProcessQueue.length > 0) {
-    this.processQueue = this.futureProcessQueue;
-    this.futureProcessQueue = []
-    this.processThreshold = this.processThreshold / 2
-    this.timer = setTimeout(Page.prototype.processOverviewQueue.bind(this), 1);
-    return;
-  }
 }
-Page.prototype.computeOverview = function(script, id) {
-  var time = tree.stop(id) - tree.start(id);
-  var info = textmap[tree.textId(id)].split(",");
 
-  if (info[0] == "G" || info[0] == "g")
-    script = "";
-  else if (info[0] == "c" || info[0] == "ps" || info[0] == "pf" || info[0] == "pl" || info[0] == "s")
-    script = info[1]+":"+info[2];
-
-  if (time < 0)
-    throw "negative time";
-
-  var childs = tree.childs(id);
-  for (var i = 0; i < childs.length; i++) {
-    var childTime = tree.stop(childs[i]) - tree.start(childs[i]);
-    time -= childTime;
-
-    if (childTime < this.processThreshold) {
-      this.futureProcessQueue[this.futureProcessQueue.length] = [script, childs[i]]
-    } else {
-      this.computeOverview(script, childs[i])
-    }
-
-    if (time < 0)
-      throw "negative time";
-  }
-
-  if (time > 0) {
-    if (!this.engineOverview[info[0]])
-      this.engineOverview[info[0]] = 0
-    this.engineOverview[info[0]] += time;
-  }
-
-  if (script != "") {
-    if (!this.scriptOverview[script]) {
-      this.scriptOverview[script] = {};
-      this.scriptTimes[script] = {"c":0, "s":0};
-    }
-    if (info[0] == "c" || info[0] == "s")
-      this.scriptTimes[script][info[0]] += 1;
-    if (info[0] != "s") {
-      if (!this.scriptOverview[script][info[0]])
-        this.scriptOverview[script][info[0]] = 0;
-      this.scriptOverview[script][info[0]] += time;
-    }
-  }
-}
-Page.prototype.resize = function() {
-  this.canvas.dom.width = (document.body.clientWidth - 350)
-  this.canvas.draw();
-}
 Page.prototype.clickCanvas = function(e) {
     var posx = 0;
     var posy = 0;
