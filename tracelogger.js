@@ -347,11 +347,12 @@ Page.prototype.processOverviewQueue = function () {
   var output = "<h2>Script Overview</h2>"+
                "<table><tr><td>Script</td><td>Times called</td><td>Times compiled</td><td>Total time</td><td>Spend time</td></tr>";
   for (var script in this.scriptOverview) {
-    output += "<tr><td>"+translateScript(script)+"</td><td>"+this.scriptTimes[script]["s"]+"</td><td>"+this.scriptTimes[script]["c"]+"</td><td></td><td>";
+    output += "<tr><td>"+translateScript(script)+"</td><td>"+this.scriptTimes[script]["s"]+"</td><td>"+this.scriptTimes[script]["c"]+"</td><td>";
     var script_total = 0;
     for (var j in this.scriptOverview[script]) {
       script_total += this.scriptOverview[script][j];
     }
+    output += percent(script_total/total)+"%</td><td>";
     for (var j in this.scriptOverview[script]) {
       output += ""+translateSubject(j)+": "+percent(this.scriptOverview[script][j]/script_total)+"%, ";
     }
