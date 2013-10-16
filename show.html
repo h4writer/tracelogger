@@ -141,33 +141,6 @@ DataTree.prototype.childs = function(id) {
   return childs;
 }
 
-DataTree.prototype.backtrace = function (id) {
-  var tick = this.start(id);
-  var cid = 0;
-  var bt = []
-  var found = true;
-
-  while (found) {
-    found = false;
-
-    var childs = this.childs(cid);
-    for (var i = 0; i < childs.length; i++) {
-      if (this.start(childs[i]) <= tick && this.stop(childs[i]) > tick) {
-        cid = childs[i]
-        if (cid == id)
-          return bt;
-
-        bt[bt.length] = id;
-        found = true
-        break;
-      }
-    }
-  }
-
-  console.log("Shouldn't reach this.");
-  return [];
-}
-
 function percent(double) {
   return Math.round(double*10000)/100;
 }
@@ -374,15 +347,15 @@ Page.prototype.initEngineOverview = function() {
   this.processQueue = [["",0]]
   this.futureProcessQueue = []
   this.processThreshold = (tree.stop(0) - tree.start(0));
-  this.processEngineOverviewQueue();
+  this.processOverviewQueue();
 }
 Page.prototype.initScriptOverview = function() {
   
 }
-Page.prototype.processEngineOverviewQueue = function () {
+Page.prototype.processOverviewQueue = function () {
   var queue = this.processQueue.splice(0,10000);
   for (var i=0; i<queue.length; i++) {
-    this.computeEngineOverview(queue[i][0], queue[i][1])
+    this.computeOverview(queue[i][0], queue[i][1])
   }
 
   var dom = document.getElementById("engineOverview");
@@ -418,7 +391,7 @@ Page.prototype.processEngineOverviewQueue = function () {
   dom.innerHTML = output;
 
   if (this.processQueue.length > 0) {
-    this.timer = setTimeout(Page.prototype.processEngineOverviewQueue.bind(this), 1);
+    this.timer = setTimeout(Page.prototype.processOverviewQueue.bind(this), 1);
     return;
   }
 
@@ -426,17 +399,17 @@ Page.prototype.processEngineOverviewQueue = function () {
     this.processQueue = this.futureProcessQueue;
     this.futureProcessQueue = []
     this.processThreshold = this.processThreshold / 2
-    this.timer = setTimeout(Page.prototype.processEngineOverviewQueue.bind(this), 1);
+    this.timer = setTimeout(Page.prototype.processOverviewQueue.bind(this), 1);
     return;
   }
 }
-Page.prototype.computeEngineOverview = function(script, id) {
+Page.prototype.computeOverview = function(script, id) {
   var time = tree.stop(id) - tree.start(id);
   var info = textmap[tree.textId(id)].split(",");
 
   if (info[0] == "G" || info[0] == "g")
     script = "";
-  else if (info[0] == "c" || info[0] == "ps" || info[0] == "pf" || info[0] == "pl" || info[0] == "G" || info[0] == "g" || info[0] == "s")
+  else if (info[0] == "c" || info[0] == "ps" || info[0] == "pf" || info[0] == "pl" || info[0] == "s")
     script = info[1]+":"+info[2];
 
   if (time < 0)
@@ -450,7 +423,7 @@ Page.prototype.computeEngineOverview = function(script, id) {
     if (childTime < this.processThreshold) {
       this.futureProcessQueue[this.futureProcessQueue.length] = [script, childs[i]]
     } else {
-      this.computeEngineOverview(script, childs[i])
+      this.computeOverview(script, childs[i])
     }
 
     if (time < 0)
@@ -466,12 +439,8 @@ Page.prototype.computeEngineOverview = function(script, id) {
   if (script != "") {
     if (!this.scriptOverview[script]) {
       this.scriptOverview[script] = {};
-      this.scriptTimes[script] = {};
+      this.scriptTimes[script] = {"c":0, "s":0};
     }
-    if (!this.scriptOverview[script]["c"])
-      this.scriptTimes[script]["c"] = 0;
-    if (!this.scriptOverview[script]["s"])
-      this.scriptTimes[script]["s"] = 0;
     if (info[0] == "c" || info[0] == "s")
       this.scriptTimes[script][info[0]] += 1;
     if (info[0] != "s") {
