@@ -1,6 +1,13 @@
 if (typeof window === 'undefined') {
+  var running = []
   function setTimeout(func, time) {
-    func();
+    running[running.length] = func;
+    if (running.length == 1) {
+      for (var i = 0; i < running.length; i++) {
+        running[i]();
+      }
+      running = [];
+    }
   };
 }
 
@@ -35,6 +42,15 @@ function DataTree(buffer, textmap) {
    * nextId: 32bits
    */
   this.itemSize = 8+8+4+4;
+
+  this.splitTextmap = {}
+  for (string in this.textmap) {
+    this.splitTextmap[string] = this.textmap[string].split(",")
+  }
+}
+
+DataTree.prototype.size = function() {
+  return this.buffer.byteLength;
 }
 
 DataTree.prototype.head = function() {
@@ -60,6 +76,9 @@ DataTree.prototype.textId = function(id) {
 
 DataTree.prototype.text = function(id) {
   return this.textmap[this.textId(id)]
+}
+DataTree.prototype.textSplit = function(id) {
+  return this.splitTextmap[this.textId(id)]
 }
 
 DataTree.prototype.nextId = function(id) {
@@ -96,6 +115,74 @@ DataTree.prototype.childs = function(id) {
   return childs;
 }
 
+function CreateDataTree(size, stop) {
+  this.buffer = new ArrayBuffer(size);
+  this.tree = new DataTree(this.buffer, {});
+
+  this._writeStart(0, 0);
+  this._writeStop(0, stop);
+  this._writeTextId(0, 0);
+
+  this.i = 1;
+}
+
+CreateDataTree.prototype.size = function() {
+  return this.i*this.tree.itemSize;
+}
+
+CreateDataTree.prototype.addChild = function(parent, start, stop, textId) {
+  var hasChilds = this.tree.hasChilds(parent);
+  if (hasChilds) {
+    var nextId = parent + 1;
+    while(this.tree.nextId(nextId) != 0) {
+      nextId = this.tree.nextId(nextId);
+    }
+    this._writeNextId(nextId, this.i);
+  } else {
+    if (this.i != parent + 1)
+      throw "impossible adding child to "+parent+". Id is already:"+this.i;
+
+    this._writeHasChilds(parent, 1);
+  }
+
+  this._writeStart(this.i, start);
+  this._writeStop(this.i, stop);
+  this._writeTextId(this.i, textId);
+  return this.i++;
+}
+
+CreateDataTree.prototype._writeStart = function(id, start) {
+  var p1 = start / 4294967295;
+  var p2 = start % 4294967295;
+
+  this.tree.view.setUint32(id * this.tree.itemSize, p1);
+  this.tree.view.setUint32(id * this.tree.itemSize + 4, p2);
+}
+
+CreateDataTree.prototype._writeStop = function(id, stop) {
+  var p1 = stop / 4294967295;
+  var p2 = stop % 4294967295;
+
+  this.tree.view.setUint32(id * this.tree.itemSize + 8, p1);
+  this.tree.view.setUint32(id * this.tree.itemSize + 12, p2);
+}
+
+CreateDataTree.prototype._writeTextId = function(id, textId) {
+  var hasChilds = this.tree.hasChilds(id);
+
+  this.tree.view.setUint32(id * this.tree.itemSize + 16, textId*2+hasChilds);
+}
+
+CreateDataTree.prototype._writeHasChilds = function(id, hasChilds) {
+  var textId = this.tree.textId(id);
+
+  this.tree.view.setUint32(id * this.tree.itemSize + 16, textId*2+hasChilds);
+}
+
+CreateDataTree.prototype._writeNextId = function(id, nextId) {
+  this.tree.view.setUint32(id * this.tree.itemSize + 20, nextId);
+}
+
 function Overview(tree, settings) {
   this.tree = tree;
   this.settings = settings;
@@ -106,6 +193,21 @@ function Overview(tree, settings) {
   this.queue = [["",0]]
   this.futureQueue = []
   this.threshold = (tree.stop(0) - tree.start(0));
+
+  if (typeof this.settings.maxThreshold == "undefined")
+    this.settings.maxThreshold = 0;
+
+  // hack to increase speed 3fold
+  for (var i=0; i < tree.textmap.length; i++) {
+    var info = tree.textmap[i].split(",");
+    if (this.hasScriptInfo(info[0])) {
+      var script = this.getScriptInfo(info);
+      this.scriptOverview[script] = {};
+      this.scriptTimes[script] = {"c":0, "s":0};
+    }
+  }
+
+  this.visit = 0
 }
 
 Overview.prototype.init = function() {
@@ -125,31 +227,35 @@ Overview.prototype.clearScriptInfo = function(tag) {
 }
 
 Overview.prototype.processTreeItem = function(script, id) {
+  this.visit += 1
   var time = this.tree.stop(id) - this.tree.start(id);
-  var info = this.tree.text(id).split(",");
+  var info = this.tree.textSplit(id);
 
   if (this.clearScriptInfo(info[0]))
     script = "";
   else if (this.hasScriptInfo(info[0]))
     script = this.getScriptInfo(info);
 
-  if (time < 0)
-    throw "negative time";
+  //if (time < 0)
+  //  throw "negative time";
 
-  var childs = tree.childs(id);
+  var childs = this.tree.childs(id);
   for (var i = 0; i < childs.length; i++) {
-    var childTime = tree.stop(childs[i]) - tree.start(childs[i]);
-    time -= childTime;
+    var childTime = this.tree.stop(childs[i]) - this.tree.start(childs[i]);
 
-    if (childTime < this.threshold) {
-      this.futureQueue[this.futureQueue.length] = [script, childs[i]]
-    } else {
-      this.processTreeItem(script, childs[i])
+    if (childTime >= this.settings.maxThreshold) {
+       if (childTime < this.threshold) {
+        this.futureQueue[this.futureQueue.length] = [script, childs[i]]
+      } else {
+        this.processTreeItem(script, childs[i])
+      }
+      time -= childTime;
     }
-
-    if (time < 0)
-      throw "negative time";
+    //if (time < 0)
+    //  throw "negative time";
   }
+
+
 
   if (time > 0) {
     if (!this.engineOverview[info[0]])
@@ -158,13 +264,12 @@ Overview.prototype.processTreeItem = function(script, id) {
   }
 
   if (script != "") {
-    if (!this.scriptOverview[script]) {
-      this.scriptOverview[script] = {};
-      this.scriptTimes[script] = {"c":0, "s":0};
-    }
-    if (info[0] == "c" || info[0] == "s")
-      this.scriptTimes[script][info[0]] += 1;
-    if (info[0] != "s") {
+    if (info[0] == "c")
+      this.scriptTimes[script]["c"] += 1;
+
+    if (info[0] == "s") {
+      this.scriptTimes[script]["s"] += 1;
+    } else {
       if (!this.scriptOverview[script][info[0]])
         this.scriptOverview[script][info[0]] = 0;
       this.scriptOverview[script][info[0]] += time;
@@ -196,4 +301,30 @@ Overview.prototype.processQueue = function () {
 
   if (this.settings.finish_cb)
     this.settings.finish_cb(this);
+}
+
+Overview.prototype.processQueueSeq = function () {
+  while (true) {
+    var queue = this.queue.splice(0, 10000);
+    for (var i=0; i<queue.length; i++) {
+      this.processTreeItem(queue[i][0], queue[i][1])
+    }
+
+    if (this.settings.chunk_cb)
+      this.settings.chunk_cb(this);
+    
+    if (this.queue.length > 0)
+      continue;
+
+    if (this.futureQueue.length > 0) {
+      this.queue = this.futureQueue;
+      this.futureQueue = []
+      this.threshold = this.threshold / 2
+      continue;
+    }
+
+    if (this.settings.finish_cb)
+      this.settings.finish_cb(this);
+    break;
+  }
 }

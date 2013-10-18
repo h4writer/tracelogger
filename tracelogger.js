@@ -1,26 +1,56 @@
+var loaded = {
+  dict: false,
+  tree: false
+}
+
 var tree = undefined;
 var page = undefined;
+var textmap = undefined;
+var buffer = undefined;
+var corrections = undefined;
 
 var xhr = new XMLHttpRequest();
 xhr.open('GET', data["dict"], true);
-
 xhr.onload = function(e) {
-  var textmap = JSON.parse(this.response);
-
-  var xhr = new XMLHttpRequest();
-  xhr.open('GET', data["tree"], true);
-  xhr.responseType = 'arraybuffer';
-
-  xhr.onload = function(e) {
-    tree = new DataTree(this.response, textmap);
-    page = new Page();
-    page.init()
-  };
-
-  xhr.send();
+  textmap = JSON.parse(this.response);
+  loaded.dict = true;
+  finished();
 };
-
 xhr.send();
+
+var xhr2 = new XMLHttpRequest();
+xhr2.open('GET', data["tree"], true);
+xhr2.responseType = 'arraybuffer';
+xhr2.onload = function(e) {
+  buffer = this.response;
+  loaded.tree = true;
+  finished();
+};
+xhr2.send();
+
+if (typeof data.corrections != "undefined") {
+  loaded.corrections= false;
+
+  var xhr3 = new XMLHttpRequest();
+  xhr3.open('GET', data["corrections"], true);
+  xhr3.onload = function(e) {
+    console.log(this.response)
+    corrections = JSON.parse(this.response);
+    loaded.corrections = true;
+    finished();
+  };
+  xhr3.send();
+}
+
+function finished() {
+  for (i in loaded)
+    if (!loaded[i])
+      return;
+
+  tree = new DataTree(buffer, textmap);
+  page = new Page();
+  page.init()
+}
 
 function percent(double) {
   return Math.round(double*10000)/100;
@@ -230,6 +260,12 @@ Page.prototype.initOverview = function() {
   this.overview = new Overview(tree, {
     chunk_cb: Page.prototype.computeOverview.bind(this)
   });
+
+  if (typeof data.corrections != "undefined") {
+    this.overview.engineOverview = corrections.engineOverview;
+    this.overview.scriptOverview = corrections.scriptOverview;
+    this.overview.scriptTimes = corrections.scriptTimes;
+  }
 
   this.overview.init();
 }
