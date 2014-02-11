@@ -6,6 +6,8 @@ To create a log file you need to recompile the js shell with --enable-trace-logg
 Afterwards every execution of a file will result in the creation of a /tmp/tracelogging.log file.
 This branch contains the python scripts to create a nice graph out of tracelogging files.
 
+Tools V1
+========
 
 To create a tracelogging graph when you obtained the log file:
 
@@ -16,3 +18,8 @@ e.g.
 
 The outfile should contain the graph. Put style.css and basic.js in the same folder
 and you should be good to go.
+
+Tools V2
+========
+
+Experimental.
