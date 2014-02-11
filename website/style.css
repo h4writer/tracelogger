@@ -1,0 +1,65 @@
+body {
+    font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
+    font-size: 14px;
+    line-height: 20px;
+    color: #333;
+}
+
+.contentWidth {
+  width: 1170px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    margin: 10px 0px;
+    font-family: inherit;
+    font-weight: bold;
+    line-height: 20px;
+    color: inherit;
+    text-rendering: optimizelegibility;
+}
+
+h1, h2, h3 {
+    line-height: 40px;
+}
+
+h1 {
+  font-size: 38.5px;
+}
+
+h2 {
+  font-size: 1em;
+}
+
+a:hover, a:focus {
+    color: #005580;
+    text-decoration: underline;
+}
+
+a:hover, a:active {
+    outline: 0px none;
+}
+
+a {
+    color: #08C;
+    text-decoration: none;
+}
+
+table {
+  max-width: 100%;
+  background-color: transparent;
+  border-collapse: collapse;
+  border-spacing: 0;
+}
+
+.page_home h2 {
+  display: inline;
+}
+.page_home .more {
+  display: inline;
+  margin-left: 10px;
+}
+.page_home .graph {
+  float: left;
+}
