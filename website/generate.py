@@ -1,10 +1,12 @@
 import tools
 import calendar
 import json
+from optparse import OptionParser
 
-db = tools.db
-
-c = db.cursor()
+parser = OptionParser(usage="usage: %prog [options]")
+parser.add_option("-f", "--force", dest="force", action="store_true", default=False,
+                  help="Force runs even without source changes")
+(options, args) = parser.parse_args()
 
 full_subject = {
   "g": "Minor GC",
@@ -18,6 +20,9 @@ full_subject = {
   "i": "Interpreter",
   "r": "Yarr jitt execution"
 }
+
+db = tools.db
+c = db.cursor()
 
 # Create "front.js" file
 data = {}
@@ -46,7 +51,7 @@ fp.write(";")
 fp.close()
 
 c.execute("SELECT ID FROM Run WHERE processed = 0 AND finished = 1")
-if not c.fetchone():
+if not c.fetchone() and not options.force:
   print "Nothing to update"
   exit()
 

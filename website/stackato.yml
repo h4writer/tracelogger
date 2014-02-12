@@ -1,0 +1,20 @@
+name: tl-beta 
+instances: 1
+framework:
+  type: php
+  runtime: php
+mem: 128
+services:
+  # an empty default database 
+  # comment out if desired and bind existing databases 
+  # using `stackato bind-service ...`
+  $tracelogger-db: mysql
+env:
+  # phpmyadmin login password. Use your Stackato username. 
+  PMA_PASSWORD: ...
+ignores: ["stackato.yml", "*~", "*.pyc", ".git/", "data/*"]
+cron:
+  - "*/5 * * * * python generate.py"
+hooks:
+  pre-staging: /opt/ActivePython-2.7/bin/pypm -y install mysql-python
+  pre-running: python generate.py --force

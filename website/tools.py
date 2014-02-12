@@ -9,8 +9,8 @@ try:
 except:
     import configparser as ConfigParser
 
+import os
 import json
-import calendar
 
 db = None
 version = None
@@ -28,6 +28,13 @@ def Startup():
     user = config.get('mysql', 'user')
     pw = config.get('mysql', 'pass')
     name = config.get('mysql', 'name')
+
+    if os.getenv("VCAP_SERVICES"):
+      data = json.loads(os.getenv("VCAP_SERVICES"))
+      host = data["mysql"][0]["credentials"]["host"]
+      user = data["mysql"][0]["credentials"]["username"]
+      pw = data["mysql"][0]["credentials"]["password"]
+      name = data["mysql"][0]["credentials"]["name"]
 
     if host[0] == '/':
         db = mdb.connect(unix_socket=host, user=user, passwd=pw, db=name, use_unicode=True, cursorclass=mdb_cursors.DictCursor)
