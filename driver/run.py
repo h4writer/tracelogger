@@ -34,7 +34,6 @@ for engine in engines:
 
 ######### UPLOAD #################
 
-rev = "743508759dd9"
 logDir = utils.config.get('main', 'logDir')
 uploadPath = utils.config.get('main', 'uploadPath')
 
