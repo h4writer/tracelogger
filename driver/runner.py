@@ -123,7 +123,7 @@ class SSRunner(Runner):
             "string-validate-input"]
 
     def run_script(self, script):
-        print run("cd "+self.benchmarks+"/SunSpider/tests/sunspider-1.0.1; "+self.js+" --ion-parallel-compile=on "+script+".js")
+        print run("cd "+self.benchmarks+"/SunSpider/tests/sunspider-1.0.1; "+self.engine.js+" --ion-parallel-compile=on "+script+".js")
         return "/tmp/tracelogging.log"
 
 class PeaceKeeperRunner(Runner):
