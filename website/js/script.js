@@ -77,7 +77,8 @@ var TLGraph = function(engine, suite, script) {
   this.dom = $("<div class='graph'>"+
                "<div class='graph_title'>"+
                "<h2>"+this.suite["name"]+" - "+this.engine["name"]+(script?" - "+script["name"]:"")+"</h2>"+
-               (!script?"<a href='javascript:TL.suitePage("+engine["ID"]+",\""+suite["name"]+"\")' class='more'>View details</a>":"")+
+               (!script?"<a href='javascript:TL.suitePage("+engine["ID"]+",\""+suite["name"]+"\")' class='more'>View individual scripts</a>":
+                        "<a href='tracelogger.html?data=data-"+suite["name"]+"-"+engine["name"]+"-"+script["name"]+".js' class='more'>View details</a>")+
                "</div>"+
                "<div class='placeholder' style='width:550px; height:350px'></div>"+
                "</div>");

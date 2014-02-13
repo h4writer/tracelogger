@@ -70,3 +70,4 @@ table.vertical th {
 tr.inactive td {
   color: #AAAAAA;
 }
+#backtrace { float:right; background-color:white; padding:5px; border:1px SOLID #000000; overflow:auto; width:300px; height:390px; white-space:nowrap; text-overflow: ellipsis; }
