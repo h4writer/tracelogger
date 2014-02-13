@@ -3,6 +3,7 @@ import subprocess
 import struct
 import json
 import shutil
+import os
 
 argparser = argparse.ArgumentParser(description='Reduce the logfile to make suitable for online destribution.')
 argparser.add_argument('js_shell', help='a js shell environment')
@@ -11,12 +12,13 @@ argparser.add_argument('output_name', help='the name of the output (without the 
 args = argparser.parse_args()
 
 shell = args.js_shell;
-jsfile = args.js_file;
+jsfile = os.getcwd()+"/"+args.js_file;
 output = args.output_name;
 
+pwd = os.path.dirname(os.path.realpath(__file__))
 retrieveData = shell+" -f "+jsfile+" -e 'print(JSON.stringify(data))'"
-tree = shell+" -f "+jsfile+" -f reduce-tree.js"
-corr = shell+" -f "+jsfile+" -f reduce-correction.js"
+tree = shell+" -f "+jsfile+" -f "+pwd+"/reduce-tree.js"
+corr = shell+" -f "+jsfile+" -f "+pwd+"/reduce-correction.js"
 
 print "Get data information"
 jsondata = subprocess.check_output(retrieveData, shell=True)

@@ -1,4 +1,4 @@
-load("engine.js")
+loadRelativeToScript("engine.js")
 var textmap = JSON.parse(read(data["dict"]))
 var array = read(data["tree"], 'binary');
 var tree = new DataTree(array.buffer, textmap);
