@@ -32,3 +32,14 @@ for engine in engines:
     runner.PeaceKeeperRunner(rev, engine, submitter, normaljs).bench();
     submitter.Finish()
 
+######### UPLOAD #################
+
+logDir = utils.config.get('main', 'logDir')
+uploadPath = utils.config.get('main', 'uploadPath')
+
+print utils.run("rm "+uploadPath+"/data-*")
+print utils.run("cp "+logDir+"/data-*-"+rev+"-reduced.*.gz "+uploadPath)
+print utils.run("rename s/-"+rev+"-reduced// "+uploadPath+"/data-*.gz")
+print utils.run("gunzip "+uploadPath+"/data-*.gz")
+print utils.run("sed -i s/-"+rev+"-reduced//g "+uploadPath+"/data-*.js")
+print utils.run("cd ~/Build/uploader; ~/Build/stackato update -n")

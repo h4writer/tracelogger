@@ -25,7 +25,7 @@ class Submitter:
             raise Exception('Remote error: ' + contents)
         self.runID = int(m.group(1))
 
-    def SubmitScore(self, script, suite, subject, score):
+    def SubmitScore(self, suite, script, subject, score):
         url = self.url
         url += "?action=score"
         url += "&runid="+str(self.runID)
@@ -35,7 +35,7 @@ class Submitter:
         url += "&score="+str(score)
         urllib2.urlopen(url)
 
-    def Finish(self, status):
+    def Finish(self):
         url = self.url
         url += '?run=finish'
         url += '&runid='+str(self.runID)
