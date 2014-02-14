@@ -17,4 +17,6 @@ cron:
   - "*/5 * * * * python generate.py"
 hooks:
   pre-staging: /opt/ActivePython-2.7/bin/pypm -y install mysql-python
-  pre-running: python generate.py --force
+  pre-running: 
+    - python generate.py --force
+    - rm update.php

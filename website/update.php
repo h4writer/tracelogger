@@ -107,4 +107,7 @@ if ($_GET['action'] == "finish") {
         die();
 
     query("UPDATE Run SET finished = 1 WHERE ID = '%s'", $_GET['runid']);
+
+    mysqli_commit($ml);
+    die();
 }
