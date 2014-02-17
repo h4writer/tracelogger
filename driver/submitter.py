@@ -37,7 +37,7 @@ class Submitter:
 
     def Finish(self):
         url = self.url
-        url += '?run=finish'
+        url += '?action=finish'
         url += '&runid='+str(self.runID)
         urllib2.urlopen(url)
 

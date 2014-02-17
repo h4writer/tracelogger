@@ -25,12 +25,12 @@ engines = [engine.X86Engine(),
            engine.X86GGCEngine()]
 
 for engine in engines:
-    submitter = submitter.Submitter()
-    submitter.Start(rev, engine)
-    runner.OctaneRunner(rev, engine, submitter, normaljs).bench();
-    runner.SSRunner(rev, engine, submitter, normaljs).bench();
-    runner.PeaceKeeperRunner(rev, engine, submitter, normaljs).bench();
-    submitter.Finish()
+    submit = submitter.Submitter()
+    submit.Start(rev, engine)
+    runner.OctaneRunner(rev, engine, submit, normaljs).bench();
+    runner.SSRunner(rev, engine, submit, normaljs).bench();
+    runner.PeaceKeeperRunner(rev, engine, submit, normaljs).bench();
+    submit.Finish()
 
 ######### UPLOAD #################
 
