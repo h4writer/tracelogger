@@ -83,13 +83,13 @@ def updateNextId(i, nextId):
 #################################
 
 class OutputTree:
-  def __init__(self):
+  def __init__(self, start_tick):
     self.tree = {"sub":[], "start":0, "stop":-1, "info":"helper structure", "id":0}
     self.stack = [self.tree]
     self.topInfo_ = ["helper structure"]
     self.id = 0
 
-    write(self.id, 0, 0)
+    write(self.id, int(start_tick), 0)
   
   def hasChilds(self):
     return len(self.stack[-1]["sub"]) > 0
@@ -134,7 +134,7 @@ class OutputTree:
 
 for reader in readers:
   reader.next()
-  tree = OutputTree()
+  tree = OutputTree(reader.info()["data"][0])
 
   while not reader.isDone():
     if reader.isStart():

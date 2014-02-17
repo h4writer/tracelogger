@@ -33,8 +33,8 @@ class Runner:
     def clean(self):
         # Clean the tmp dir
         print run("rm /tmp/tracelogging* -f")
-        print run("cd "+self.output_dir+"; gzip *.tl")
-        print run("cd "+self.output_dir+"; gzip *.js")
+        print run("cd "+self.output_dir+"; gzip -f *.tl")
+        print run("cd "+self.output_dir+"; gzip -f *.js")
 
     def filter(self, logfile):
         # Filter self-hosting init. out of the logs

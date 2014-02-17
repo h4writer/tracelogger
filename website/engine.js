@@ -115,11 +115,11 @@ DataTree.prototype.childs = function(id) {
   return childs;
 }
 
-function CreateDataTree(size, stop) {
+function CreateDataTree(size, start, stop) {
   this.buffer = new ArrayBuffer(size);
   this.tree = new DataTree(this.buffer, {});
 
-  this._writeStart(0, 0);
+  this._writeStart(0, start);
   this._writeStop(0, stop);
   this._writeTextId(0, 0);
 

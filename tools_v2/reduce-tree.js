@@ -15,7 +15,7 @@ function visitItem(parent, id) {
   }
 }
 
-var cTree = new CreateDataTree(tree.size(), tree.stop(0));
+var cTree = new CreateDataTree(tree.size(), tree.start(0), tree.stop(0));
 var childs = tree.childs(0);
 for (var i=0; i<childs.length; i++) {
   visitItem(0, childs[i]);

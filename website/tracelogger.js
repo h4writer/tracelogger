@@ -77,15 +77,16 @@ function DrawCanvas(dom, tree) {
   this.ctx = dom.getContext("2d");
   this.tree = tree;
   this.line_height = 10;
-  this.duration = this.tree.stop(0);
+  this.start = this.tree.start(0);
+  this.duration = this.tree.stop(0) - this.start;
 
   this.drawQueue = []
   this.drawThreshold = 1
 }
 
 DrawCanvas.prototype.drawItem = function(id) {
-  var start = this.tree.start(id);
-  var stop = this.tree.stop(id);
+  var start = this.tree.start(id) - this.start;
+  var stop = this.tree.stop(id) - this.start;
   var color = this.color(this.tree.text(id));
 
   if (!this.drawRect(start, stop, color)) {
@@ -167,6 +168,7 @@ DrawCanvas.prototype.color = function (info) {
 DrawCanvas.prototype.backtraceAtPos = function (x, y) {
   var tick = Math.floor(y / this.line_height) * this.width + x;
   tick = tick / this.conversion;
+  tick += this.start;
 
   var id = 0;
   var bt = []
