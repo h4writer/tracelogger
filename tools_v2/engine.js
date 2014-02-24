@@ -255,7 +255,9 @@ Overview.prototype.processTreeItem = function(script, id) {
     //  throw "negative time";
   }
 
-
+  // tree head
+  if (id == 0)
+      return;
 
   if (time > 0) {
     if (!this.engineOverview[info[0]])
