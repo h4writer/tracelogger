@@ -1,4 +1,4 @@
-var baseUrl = "https://tl-uploader.paas.allizom.org/";
+var baseUrl = "./";
 
 function GetUrlValue(VarSearch){
     var SearchString = window.location.search.substring(1);
@@ -46,7 +46,7 @@ if (/^[a-zA-Z0-9-.]*$/.test(url)) {
     var pos = json.indexOf("=");
     json = json.substr(pos+1);
 
-    data = JSON.parse(json);
+    data = JSON.parse(json)[1];
 
     var pages = [];
     pages[0] = data.dict;
@@ -128,39 +128,37 @@ DrawCanvas.prototype.drawRect = function(start, stop, color) {
 }
 
 DrawCanvas.prototype.color = function (info) {
-  var letter = info.substr(0,1);
-  if (letter == "s") {
-    return "#FFFFFF";
-  }
-
-  if (letter == "c")
+  if (info == "IonCompilation")
+    return "green";
+  if (info == "IonLinking")
     return "green";
 
-  if (letter == "r")
+  if (info == "YarrCompile")
+    return "#BE8CFF";
+  if (info == "YarrJIT")
+    return "#BE8CFF";
+  if (info == "YarrInterpreter")
     return "#BE8CFF";
 
-  if (letter == "g")
+  if (info == "MinorGC")
     return "#CCCCCC";
 
-  if (letter == "G")
+  if (info == "GC")
     return "#666666";
 
-  if (letter == "i")
+  if (info == "Interpreter")
     return "#FFFFFF";
-  if (letter == "b")
+  if (info == "Baseline")
     return "#FFE75E";
-  if (letter == "o")
+  if (info == "IonMonkey")
     return "#54D93D";
 
-  if (letter == "p") {
-    var type = info.substr(1,1);
-    if (type == "s")
+  if (info == "ParserCompileScript")
       return "#DB0000";
-    if (type == "l")
+  if (info == "ParserCompileLazy")
       return "#A30000";
-    if (type == "f")
+  if (info == "ParserCompileFunction")
       return "#CC8585";
-  }
 
   return "white";
 }
@@ -299,7 +297,7 @@ Page.prototype.computeOverview = function () {
   }
 
   for (var i in this.overview.engineOverview) {
-    output += "<tr><td>"+translateSubject(i)+"</td><td>"+percent(this.overview.engineOverview[i]/total)+"%</td></tr>";
+    output += "<tr><td>"+i+"</td><td>"+percent(this.overview.engineOverview[i]/total)+"%</td></tr>";
   }
   output += "</table>";
   dom.innerHTML = output;
@@ -308,14 +306,18 @@ Page.prototype.computeOverview = function () {
   var output = "<h2>Script Overview</h2>"+
                "<table><tr><td>Script</td><td>Times called</td><td>Times compiled</td><td>Total time</td><td>Spend time</td></tr>";
   for (var script in this.overview.scriptOverview) {
-    output += "<tr><td>"+translateScript(script)+"</td><td>"+this.overview.scriptTimes[script]["s"]+"</td><td>"+this.overview.scriptTimes[script]["c"]+"</td><td>";
+    if (!this.overview.scriptTimes[script]["IonCompilation"])
+      this.overview.scriptTimes[script]["IonCompilation"] = 0
+    output += "<tr><td>"+script+"</td><td>"+this.overview.scriptTimes[script][script]+"</td><td>"+this.overview.scriptTimes[script]["IonCompilation"]+"</td><td>";
     var script_total = 0;
     for (var j in this.overview.scriptOverview[script]) {
-      script_total += this.overview.scriptOverview[script][j];
+      if (j != script)
+          script_total += this.overview.scriptOverview[script][j];
     }
     output += percent(script_total/total)+"%</td><td>";
     for (var j in this.overview.scriptOverview[script]) {
-      output += ""+translateSubject(j)+": "+percent(this.overview.scriptOverview[script][j]/script_total)+"%, ";
+      if (j != script)
+        output += ""+j+": "+percent(this.overview.scriptOverview[script][j]/script_total)+"%, ";
     }
     output += "</td></tr>"
   }
@@ -339,17 +341,13 @@ Page.prototype.clickCanvas = function(e) {
     var backtrace = this.canvas.backtraceAtPos(posx, posy);
     var output = "";
     for (var i=0; i < backtrace.length; i++) {
-      var info = backtrace[i].split(",")
-      if (info[0] == "s" || info[0] == "c" || info[0] == "pl" || info[0] == "ps" || info[0] == "pF") {
-        var out = translate(backtrace[i]).split(", ")
-        out[1] = translateScript(out[1]);
-        output += out.join(", ")+"<br />";
+      var info = backtrace[i]
 
-        if (backtrace[i].substring(0,1) == "s")
-          i++;
-      } else {
-        output += translate(backtrace[i])+"<br />";
-      }
+      if (info.substring(0,6) == "script")
+        output += translateScript(info.substring(6)) + "<br />"
+      else 
+        output += info + "<br />"
     }
+
     document.getElementById("backtrace").innerHTML = output;
 }
