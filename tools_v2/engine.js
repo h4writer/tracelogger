@@ -42,11 +42,6 @@ function DataTree(buffer, textmap) {
    * nextId: 32bits
    */
   this.itemSize = 8+8+4+4;
-
-  this.splitTextmap = {}
-  for (string in this.textmap) {
-    this.splitTextmap[string] = this.textmap[string].split(",")
-  }
 }
 
 DataTree.prototype.size = function() {
@@ -76,9 +71,6 @@ DataTree.prototype.textId = function(id) {
 
 DataTree.prototype.text = function(id) {
   return this.textmap[this.textId(id)]
-}
-DataTree.prototype.textSplit = function(id) {
-  return this.splitTextmap[this.textId(id)]
 }
 
 DataTree.prototype.nextId = function(id) {
@@ -198,6 +190,7 @@ function Overview(tree, settings) {
     this.settings.maxThreshold = 0;
 
   // hack to increase speed 3fold
+  /*
   for (var i=0; i < tree.textmap.length; i++) {
     var info = tree.textmap[i].split(",");
     if (this.hasScriptInfo(info[0])) {
@@ -205,7 +198,7 @@ function Overview(tree, settings) {
       this.scriptOverview[script] = {};
       this.scriptTimes[script] = {"c":0, "s":0};
     }
-  }
+  }*/
 
   this.visit = 0
 }
@@ -214,12 +207,8 @@ Overview.prototype.init = function() {
   this.processQueue();
 }
 
-Overview.prototype.hasScriptInfo = function(tag) {
-  return tag == "c" || tag == "ps" || tag == "pf" || tag == "pl" || tag == "s";
-}
-
-Overview.prototype.getScriptInfo = function(info) {
-  return info[1]+":"+info[2];
+Overview.prototype.isScriptInfo = function(tag) {
+  return tag.substring(0, 6) == "script";
 }
 
 Overview.prototype.clearScriptInfo = function(tag) {
@@ -229,12 +218,12 @@ Overview.prototype.clearScriptInfo = function(tag) {
 Overview.prototype.processTreeItem = function(script, id) {
   this.visit += 1
   var time = this.tree.stop(id) - this.tree.start(id);
-  var info = this.tree.textSplit(id);
+  var info = this.tree.text(id);
 
-  if (this.clearScriptInfo(info[0]))
+  if (this.clearScriptInfo(info))
     script = "";
-  else if (this.hasScriptInfo(info[0]))
-    script = this.getScriptInfo(info);
+  else if (this.isScriptInfo(info))
+    script = info;
 
   //if (time < 0)
   //  throw "negative time";
@@ -259,23 +248,24 @@ Overview.prototype.processTreeItem = function(script, id) {
   if (id == 0)
       return;
 
-  if (time > 0) {
-    if (!this.engineOverview[info[0]])
-      this.engineOverview[info[0]] = 0
-    this.engineOverview[info[0]] += time;
+  if (time > 0 && !this.isScriptInfo(info)) {
+    if (!this.engineOverview[info])
+      this.engineOverview[info] = 0;
+    this.engineOverview[info] += time;
   }
 
   if (script != "") {
-    if (info[0] == "c")
-      this.scriptTimes[script]["c"] += 1;
+    if (!this.scriptTimes[script])
+        this.scriptTimes[script] = [];
+    if (!this.scriptTimes[script][info])
+        this.scriptTimes[script][info] = 0;
+    this.scriptTimes[script][info] += 1;
 
-    if (info[0] == "s") {
-      this.scriptTimes[script]["s"] += 1;
-    } else {
-      if (!this.scriptOverview[script][info[0]])
-        this.scriptOverview[script][info[0]] = 0;
-      this.scriptOverview[script][info[0]] += time;
-    }
+    if (!this.scriptOverview[script])
+        this.scriptOverview[script] = [];
+    if (!this.scriptOverview[script][info])
+        this.scriptOverview[script][info] = 0;
+    this.scriptOverview[script][info] += time;
   }
 }
 

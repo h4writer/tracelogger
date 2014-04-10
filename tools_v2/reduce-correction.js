@@ -20,10 +20,14 @@ var correction = {
 }
 for(i in fullOverview.engineOverview)
   correction.engineOverview[i] = fullOverview.engineOverview[i] - partOverview.engineOverview[i];
-for(i in fullOverview.scriptTimes) {
-  correction.scriptTimes[i] = {
-    "c": fullOverview.scriptTimes[i]["c"] - partOverview.scriptTimes[i]["c"],
-    "s": fullOverview.scriptTimes[i]["s"] - partOverview.scriptTimes[i]["s"]
+for(script in fullOverview.scriptTimes) {
+  correction.scriptTimes[script] = {}
+  for (part in fullOverview.scriptTimes[script]) {
+    correction.scriptTimes[script][part] = fullOverview.scriptTimes[script][part] 
+    if (typeof partOverview.scriptTimes[script] != "undefined" &&
+        typeof partOverview.scriptTimes[script][part] != "undefined") {
+      correction.scriptTimes[script][part] -= partOverview.scriptTimes[script][part];
+    }
   }
 }
 for(script in fullOverview.scriptOverview) { 

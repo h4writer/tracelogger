@@ -12,40 +12,51 @@ argparser.add_argument('output_name', help='the name of the output (without the 
 args = argparser.parse_args()
 
 shell = args.js_shell;
-jsfile = os.getcwd()+"/"+args.js_file;
+jsfile = args.js_file;
+if jsfile[0] != "/":
+    jsfile = os.getcwd() + "/" + jsfile;
 output = args.output_name;
 
 pwd = os.path.dirname(os.path.realpath(__file__))
-retrieveData = shell+" -f "+jsfile+" -e 'print(JSON.stringify(data))'"
-tree = shell+" -f "+jsfile+" -f "+pwd+"/reduce-tree.js"
-corr = shell+" -f "+jsfile+" -f "+pwd+"/reduce-correction.js"
+datapwd = os.path.dirname(jsfile)
 
 print "Get data information"
-jsondata = subprocess.check_output(retrieveData, shell=True)
-data = json.loads(jsondata)
+fp = open(jsfile, "r")
+data = json.load(fp)
+fp.close()
 
-print tree
-treeOutput = subprocess.check_output(tree, shell=True)
-treeFile = open(output+'.tree.tl', 'wb')
-for i in treeOutput.split("\n"):
-  if i != "":
-    treeFile.write(struct.pack('>c', chr(int(i))))
-treeFile.close()
+ndata = []
+for j in range(len(data)):
+    d = {"dict": datapwd+"/"+data[j]["dict"],
+         "tree": datapwd+"/"+data[j]["tree"]}
+    tree = shell+" -e 'var data = "+json.dumps(d)+"' -f "+pwd+"/reduce-tree.js"
+    corr = shell+" -e 'var data = "+json.dumps(d)+"' -f "+pwd+"/reduce-correction.js"
 
-print corr
-corrOutput = subprocess.check_output(corr, shell=True)
-corrFile = open(output+'.corrections.js', 'wb')
-corrFile.write(corrOutput);
-corrFile.close()
+    print tree
+    treeOutput = subprocess.check_output(tree, shell=True)
+    treeFile = open(output+'.tree.'+str(j)+'.tl', 'wb')
+    for i in treeOutput.split("\n"):
+      if i != "":
+        treeFile.write(struct.pack('>c', chr(int(i))))
+    treeFile.close()
 
-print "copy textmap"
-shutil.copyfile(data["dict"], output+".dict.js")
+    print corr
+    corrOutput = subprocess.check_output(corr, shell=True)
+    corrFile = open(output+'.corrections.'+str(j)+'.js', 'wb')
+    corrFile.write(corrOutput);
+    corrFile.close()
+
+    print "copy textmap"
+    shutil.copyfile(datapwd+"/"+data[j]["dict"], output+".dict."+str(j)+".js")
+
+    ndata.append({
+        "corrections": output+'.corrections.'+str(j)+'.js',
+        "tree": output+'.tree.'+str(j)+'.tl',
+        "dict": output+'.dict.'+str(j)+'.js'
+    })
 
 print "writing js file"
-data["corrections"] = output+'.corrections.js'
-data["tree"] = output+'.tree.tl'
-data["dict"] = output+'.dict.js'
 
-dump = open(output+".js", "w")
-dump.write("var data="+json.dumps(data))
-dump.close()
+fp = open(output+".json", "w")
+json.dump(ndata, fp);
+fp.close()

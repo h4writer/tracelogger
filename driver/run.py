@@ -21,8 +21,7 @@ print rev
 
 normaljs = utils.config.get('main', 'js')
 
-engines = [engine.X86Engine(),
-           engine.X86GGCEngine()]
+engines = [engine.X86Engine()]
 
 for engine in engines:
     submit = submitter.Submitter()
@@ -42,6 +41,6 @@ print utils.run("rm -f "+uploadPath+"/rev")
 print utils.run("cp "+logDir+"/data-*-"+rev+"-reduced.*.gz "+uploadPath)
 print utils.run("rename s/-"+rev+"-reduced// "+uploadPath+"/data-*.gz")
 print utils.run("gunzip "+uploadPath+"/data-*.gz")
-print utils.run("sed -i s/-"+rev+"-reduced//g "+uploadPath+"/data-*.js")
+print utils.run("sed -i s/-"+rev+"-reduced//g "+uploadPath+"/data-*.json")
 print utils.run("echo '"+rev+"' > "+uploadPath+"/rev")
 print utils.run("cd ~/Build/uploader; ~/Build/stackato update -n")

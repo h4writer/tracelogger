@@ -5,6 +5,7 @@ import datetime
 import utils
 
 def run(cmd):
+    print cmd
     output = subprocess.check_output(cmd, shell=True)
     return output
 
@@ -24,8 +25,8 @@ class Runner:
     def bench(self):
         for script in self.scripts():
             logfile = self.run_script(script)
-            logfile = self.filter(logfile)
-            logfile = self.convert(logfile, script)
+            #logfile = self.filter(logfile)
+            logfile = self.rename(logfile, script)
             reduced = self.reduce(logfile)
             self.submitOverview(reduced, script)
             self.clean()
@@ -35,6 +36,7 @@ class Runner:
         print run("rm /tmp/tracelogging* -f")
         print run("cd "+self.output_dir+"; gzip -f *.tl")
         print run("cd "+self.output_dir+"; gzip -f *.js")
+        print run("cd "+self.output_dir+"; gzip -f *.json")
 
     def filter(self, logfile):
         # Filter self-hosting init. out of the logs
@@ -42,24 +44,23 @@ class Runner:
         print run("pypy "+self.toolsv1+"/filter_selfhosting.py "+logfile+" -o "+nlogfile);
         return nlogfile
 
-    def convert(self, logfile, script):
-        # Convert writen logfile to typedarray logfile
+    def rename(self, logfile, script):
         nlogfile = "data-"+self.suite
         nlogfile += "-"+self.engine.name
         nlogfile += "-"+script+"-"+self.revision;
-        print run("cd "+self.output_dir+"; pypy "+self.toolsv1+"/convert.py "+logfile+" -o "+nlogfile);
-        return nlogfile+".js"
+        print run("pypy "+self.toolsv2+"/rename.py "+logfile+" "+self.output_dir+"/"+nlogfile);
+        return nlogfile+".json"
 
     def reduce(self, logfile):
         # Reduce logfile to make suitable for web
         start, end = logfile.rsplit(".")
         reduced = start+"-reduced"
         print run("cd "+self.output_dir+"; pypy "+self.toolsv2+"/reduce.py "+self.normaljs+" "+logfile+" "+reduced);
-        return reduced+".js"
+        return reduced+".json"
 
     def submitOverview(self, logfile, script):
         # Create and submit overview
-        result = run("cd "+self.output_dir+"; "+self.normaljs+" -f "+logfile+" -f "+self.toolsv2+"/overview.js")
+        result =  run("cd "+self.output_dir+"; pypy "+self.toolsv2+"/overview.py "+self.normaljs+" "+logfile);
         result = json.loads(result)["engineOverview"];
         for subject in result:
             print subject, result[subject]
@@ -87,7 +88,7 @@ class OctaneRunner(Runner):
 
     def run_script(self, script):
         print run("cd "+self.benchmarks+"/octane; "+self.engine.js+" --ion-parallel-compile=on run-"+script+".js")
-        return "/tmp/tracelogging.log"
+        return "/tmp/tl-data.json"
 
 class SSRunner(Runner):
     def __init__(self, revision, engine, submitter, normaljs):
@@ -124,7 +125,7 @@ class SSRunner(Runner):
 
     def run_script(self, script):
         print run("cd "+self.benchmarks+"/SunSpider/tests/sunspider-1.0.1; "+self.engine.js+" --ion-parallel-compile=on "+script+".js")
-        return "/tmp/tracelogging.log"
+        return "/tmp/tl-data.json"
 
 class PeaceKeeperRunner(Runner):
     def __init__(self, revision, engine, submitter, normaljs):
@@ -141,4 +142,4 @@ class PeaceKeeperRunner(Runner):
 
     def run_script(self, script):
         print run("cd "+self.benchmarks+"/PeaceKeeper; "+self.engine.js+" --ion-parallel-compile=on "+script+".js")
-        return "/tmp/tracelogging.log"
+        return "/tmp/tl-data.json"
