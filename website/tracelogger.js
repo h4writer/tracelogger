@@ -1,4 +1,4 @@
-var baseUrl = "./";
+var baseUrl = "https://tl-uploader.paas.allizom.org/";
 
 function GetUrlValue(VarSearch){
     var SearchString = window.location.search.substring(1);
