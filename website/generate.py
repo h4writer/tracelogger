@@ -16,7 +16,7 @@ data = {}
 
 ##  - engines
 data["engines"] = []
-c.execute("SELECT ID, name FROM EngineInfo")
+c.execute("SELECT ID, name FROM EngineInfo WHERE active = 1")
 for engine in c.fetchall():
   data["engines"].append({"ID": engine["ID"], "name": engine["name"]})
 
