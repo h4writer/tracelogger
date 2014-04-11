@@ -33,12 +33,6 @@ function request (files, callback) {
     }
 }
 
-var data = undefined;
-var tree = undefined;
-var page = undefined;
-var textmap = undefined;
-var buffer = undefined;
-var corrections = undefined;
 var url = GetUrlValue("data");
 if (/^[a-zA-Z0-9-.]*$/.test(url)) {
 
@@ -47,7 +41,7 @@ if (/^[a-zA-Z0-9-.]*$/.test(url)) {
     var pos = json.indexOf("=");
     json = json.substr(pos+1);
 
-    data = JSON.parse(json)[1];
+    var data = JSON.parse(json)[1];
 
     var pages = [];
     pages[0] = data.dict;
@@ -56,13 +50,13 @@ if (/^[a-zA-Z0-9-.]*$/.test(url)) {
         pages[2] = data.corrections;
 
     request(pages, function (answer) {
-      textmap = JSON.parse(answer[0]);
-      buffer = answer[1];
+      var textmap = JSON.parse(answer[0]);
+      var buffer = answer[1];
       if (answer.length == 3)
-        corrections = JSON.parse(answer[2]);
+        var corrections = JSON.parse(answer[2]);
 
-      tree = new DataTree(buffer, textmap);
-      page = new Page();
+      var tree = new DataTree(buffer, textmap);
+      var page = new Page(tree, corrections);
       page.init()
     });
   });
@@ -226,43 +220,23 @@ DrawCanvas.prototype.drawQueue = function() {
   }
 }
 
-function translate(info) {
-  info = info.split(",")
-  info[0] = translateSubject(info[0]);
-  return info.join(", ")
-}
-
-function translateSubject(subject) {
-  switch(subject) {
-    case "i": return "interpreter";
-    case "b": return "baseline";
-    case "o": return "ionmonkey";
-    case "pl": return "lazy parsing";
-    case "ps": return "script parsing";
-    case "pF": return "'Function' parsing";
-    case "s": return "script";
-    case "G": return "GC";
-    case "g": return "Minor GC";
-    case "gS": return "GC sweeping";
-    case "gA": return "GC allocating";
-    case "r": return "regexp";
-    case "c": return "IM compilation";
-  }
-}
-
 function translateScript(script) {
   var arr = script.split("/");
   return "<span title='"+script+"'>"+arr[arr.length-1]+"</span>";
 }
 
-function Page() {}
+function Page(tree, corrections) {
+  this.tree = tree;
+  this.corrections = corrections;
+}
+
 Page.prototype.init = function() {
   this.initGraph()
   this.initOverview()
 }
 
 Page.prototype.initGraph = function() {
-  this.canvas = new DrawCanvas(document.getElementById("myCanvas"), tree);
+  this.canvas = new DrawCanvas(document.getElementById("myCanvas"), this.tree);
   this.resize();
   window.onresize = this.resize.bind(this);
   this.canvas.dom.onclick = this.clickCanvas.bind(this);
@@ -274,14 +248,14 @@ Page.prototype.resize = function() {
 }
 
 Page.prototype.initOverview = function() {
-  this.overview = new Overview(tree, {
+  this.overview = new Overview(this.tree, {
     chunk_cb: Page.prototype.computeOverview.bind(this)
   });
 
-  if (typeof data.corrections != "undefined") {
-    this.overview.engineOverview = corrections.engineOverview;
-    this.overview.scriptOverview = corrections.scriptOverview;
-    this.overview.scriptTimes = corrections.scriptTimes;
+  if (this.corrections != "undefined") {
+    this.overview.engineOverview = this.corrections.engineOverview;
+    this.overview.scriptOverview = this.corrections.scriptOverview;
+    this.overview.scriptTimes = this.corrections.scriptTimes;
   }
 
   this.overview.init();
