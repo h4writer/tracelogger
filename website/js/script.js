@@ -36,7 +36,7 @@ TLClass.prototype.frontPage = function () {
 TLClass.prototype.suitePage = function (engineId, suiteName) {
   this.reset();
 
-  $("#content .contentWidth").append("<div><a href='javascript:TL.frontPage();'>&lt; back</a></div>");
+  $("#content .contentWidth").append("<div><a href='?'>&lt; back</a></div>");
 
   var engine = undefined;
   for (var i=0; i < TLData["engines"].length; i++) {
@@ -77,7 +77,7 @@ var TLGraph = function(engine, suite, script) {
   this.dom = $("<div class='graph'>"+
                "<div class='graph_title'>"+
                "<h2>"+this.suite["name"]+" - "+this.engine["name"]+(script?" - "+script["name"]:"")+"</h2>"+
-               (!script?"<a href='javascript:TL.suitePage("+engine["ID"]+",\""+suite["name"]+"\")' class='more'>View individual scripts</a>":
+               (!script?"<a href='?engine="+engine["ID"]+"&suite="+suite["name"]+"' class='more'>View individual scripts</a>":
                         "<a href='tracelogger.html?data=data-"+suite["name"]+"-"+engine["name"]+"-"+script["name"]+".js' class='more'>View details</a>")+
                "</div>"+
                "<div class='placeholder' style='width:550px; height:350px'></div>"+
@@ -185,10 +185,29 @@ TLGraph.prototype.init = function(data) {
   this.loading = false;
 }
 
+function getParameters() {
+  var searchString = window.location.search.substring(1),
+      params = searchString.split("&"),
+      hash = {};
+
+  if (searchString == "") return {};
+  for (var i = 0; i < params.length; i++) {
+    var val = params[i].split("=");
+    hash[unescape(val[0])] = unescape(val[1]);
+  }
+  return hash;
+}
 
 var TL;
 $(function() {
   TL = new TLClass();
+
+  var params = getParameters();
+  if (params["engine"] && params["suite"]) {
+    TL.suitePage(params["engine"]*1, params["suite"]);
+    return;
+  }
+
   TL.frontPage()
 });
 
