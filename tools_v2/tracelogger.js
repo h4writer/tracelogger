@@ -41,24 +41,9 @@ if (/^[a-zA-Z0-9-.]*$/.test(url)) {
     var pos = json.indexOf("=");
     json = json.substr(pos+1);
 
-    var data = JSON.parse(json)[1];
-
-    var pages = [];
-    pages[0] = data.dict;
-    pages[1] = data.tree;
-    if (data.corrections)
-        pages[2] = data.corrections;
-
-    request(pages, function (answer) {
-      var textmap = JSON.parse(answer[0]);
-      var buffer = answer[1];
-      if (answer.length == 3)
-        var corrections = JSON.parse(answer[2]);
-
-      var tree = new DataTree(buffer, textmap);
-      var page = new Page(tree, corrections);
-      page.init()
-    });
+    var data = JSON.parse(json);
+    var page = new Page(data);
+    page.init()
   });
 }
 
@@ -140,6 +125,10 @@ DrawCanvas.prototype.color = function (info) {
 
   if (info == "GC")
     return "#666666";
+  if (info == "GCSweeping")
+    return "#666666";
+  if (info == "GCAllocation")
+    return "#666666";
 
   if (info == "Interpreter")
     return "#FFFFFF";
@@ -220,22 +209,87 @@ DrawCanvas.prototype.drawQueue = function() {
   }
 }
 
+DrawCanvas.prototype.reset = function() {
+  clearTimeout(this.timer);
+  this.drawQueue = []
+  this.futureDrawQueue = []
+}
+
 function translateScript(script) {
   var arr = script.split("/");
   return "<span title='"+script+"'>"+arr[arr.length-1]+"</span>";
 }
 
-function Page(tree, corrections) {
+function Page(data, tree, corrections) {
+  this.data = data;
   this.tree = tree;
   this.corrections = corrections;
 }
 
 Page.prototype.init = function() {
-  this.initGraph()
-  this.initOverview()
+  this.initPopup()
+}
+
+Page.prototype.initPopup = function() {
+
+  var a = document.createElement("a");
+  a.innerHTML = "show thread list";
+  a.href = "#";
+  a.onclick = function() {
+      this.popup.style.display = "block";
+  }.bind(this)
+  document.body.insertBefore(a, document.getElementsByTagName("h1")[0].nextSibling);
+
+  this.popup = document.createElement("div");
+  this.popup.id = "threadpopup"
+  this.popup.innerHTML = "<h2>Thread list</h2><p>Select the thread you want to examine.</p>"
+  for (var i = 0; i < this.data.length; i++) {
+    var canvas = this.initPopupElement(this.data[i]);
+    this.popup.appendChild(canvas);
+  }
+
+  document.body.appendChild(this.popup);
+}
+
+Page.prototype.initPopupElement = function(data) {
+    var canvas = document.createElement("canvas");
+
+    var pages = [];
+    pages[0] = data.dict;
+    pages[1] = data.tree;
+    if (data.corrections)
+        pages[2] = data.corrections;
+
+    request(pages, function (answer) {
+      var textmap = JSON.parse(answer[0]);
+      var buffer = answer[1];
+      if (answer.length == 3)
+        var corrections = JSON.parse(answer[2]);
+
+      var tree = new DataTree(buffer, textmap);
+      var drawCanvas = new DrawCanvas(canvas, tree);
+      drawCanvas.draw();
+
+      drawCanvas.line_height = 50;
+      drawCanvas.dom.onclick = function() {
+          this.popup.style.display = "none";
+          this.tree = tree;
+          this.corrections = corrections;
+          this.initGraph()
+          this.initOverview()
+      }.bind(this)
+    }.bind(this));
+
+    canvas.height = "50"
+    canvas.width = "750"
+
+    return canvas;
 }
 
 Page.prototype.initGraph = function() {
+  if (this.canvas)
+      this.canvas.reset();
+
   this.canvas = new DrawCanvas(document.getElementById("myCanvas"), this.tree);
   this.resize();
   window.onresize = this.resize.bind(this);
@@ -248,6 +302,9 @@ Page.prototype.resize = function() {
 }
 
 Page.prototype.initOverview = function() {
+  if (this.overview)
+      this.overview.reset();
+
   this.overview = new Overview(this.tree, {
     chunk_cb: Page.prototype.computeOverview.bind(this)
   });

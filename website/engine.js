@@ -320,3 +320,8 @@ Overview.prototype.processQueueSeq = function () {
     break;
   }
 }
+
+Overview.prototype.reset = function() {
+    this.queue = []
+    this.futureQueue = []
+}
