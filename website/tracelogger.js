@@ -268,8 +268,6 @@ Page.prototype.initPopupElement = function(data) {
 
       var tree = new DataTree(buffer, textmap);
       var drawCanvas = new DrawCanvas(canvas, tree);
-      drawCanvas.draw();
-
       drawCanvas.line_height = 50;
       drawCanvas.dom.onclick = function() {
           this.popup.style.display = "none";
@@ -278,6 +276,7 @@ Page.prototype.initPopupElement = function(data) {
           this.initGraph()
           this.initOverview()
       }.bind(this)
+      drawCanvas.draw();
     }.bind(this));
 
     canvas.height = "50"
