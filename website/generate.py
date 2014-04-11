@@ -8,19 +8,6 @@ parser.add_option("-f", "--force", dest="force", action="store_true", default=Fa
                   help="Force runs even without source changes")
 (options, args) = parser.parse_args()
 
-full_subject = {
-  "g": "Minor GC",
-  "G": "GC",
-  "ps": "Script parsing",
-  "pl": "Lazy parsing",
-  "pF": "Function parsing",
-  "c": "Ion compilation",
-  "o": "Ion execution",
-  "b": "Baseline execution",
-  "i": "Interpreter",
-  "r": "Yarr jitt execution"
-}
-
 db = tools.db
 c = db.cursor()
 
@@ -82,7 +69,7 @@ for engine in c.fetchall():
 
     output = []
     for subject in data:
-      output.append({"label": full_subject[subject]+" = XX.XX%", "data": data[subject]})
+      output.append({"label": subject+" = XX.XX%", "data": data[subject]})
 
     fp = open(tools.dataPath + "/front-"+str(engine["ID"])+"-"+suite["name"]+".json", "w")
     json.dump(output, fp)
@@ -98,6 +85,7 @@ for engine in c.fetchall():
 
     c.execute("SELECT ID, submitDate FROM Run WHERE engineInfoID = %s and finished = 1 ORDER BY submitDate", (engine["ID"], ))
     for run in c.fetchall():
+      print run
       timestamp = calendar.timegm(run["submitDate"].utctimetuple())*1000
       
       c.execute("SELECT subject, score FROM Score WHERE runId = %s AND scriptInfoId = %s ORDER BY subject", (run["ID"], script["ID"]))
@@ -112,7 +100,7 @@ for engine in c.fetchall():
 
     output = []
     for subject in data:
-      output.append({"label": full_subject[subject]+" = XX.XX%", "data": data[subject]})
+      output.append({"label": subject+" = XX.XX%", "data": data[subject]})
 
     fp = open(tools.dataPath + "/front-"+str(engine["ID"])+"-"+script["suite"]+"-"+script["name"]+".json", "w")
     json.dump(output, fp)

@@ -12,7 +12,7 @@ services:
 env:
   # phpmyadmin login password. Use your Stackato username. 
   PMA_PASSWORD: ...
-ignores: ["stackato.yml", "*~", "*.pyc", ".git/", "data/*"]
+ignores: ["stackato.yml", "*~", "*.pyc", ".git/", "^data/*"]
 cron:
   - "*/5 * * * * python generate.py"
 hooks:
