@@ -1,4 +1,5 @@
-var baseUrl = "./";
+if (!baseUrl)
+    var baseUrl = "./";
 
 function GetUrlValue(VarSearch){
     var SearchString = window.location.search.substring(1);
