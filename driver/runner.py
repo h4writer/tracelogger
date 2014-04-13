@@ -82,9 +82,11 @@ class OctaneRunner(Runner):
                 'navier-stokes',
                 'pdfjs',
                 'mandreel',
-                #'gbemu', #fails currently
+                'gbemu',
                 'code-load',
-                'box2d']
+                'box2d',
+                'typescript',
+                'zlib']
 
     def run_script(self, script):
         print run("cd "+self.benchmarks+"/octane; "+self.engine.js+" --ion-parallel-compile=on run-"+script+".js")
