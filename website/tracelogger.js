@@ -58,10 +58,29 @@ function DrawCanvas(dom, tree) {
   this.tree = tree;
   this.line_height = 10;
   this.start = this.tree.start(0);
-  this.duration = this.tree.stop(0) - this.start;
+  this.stop = this.tree.stop(0);
+  this.duration = this.stop - this.start;
 
   this.drawQueue = []
   this.drawThreshold = 1
+}
+
+DrawCanvas.prototype.getStart = function() {
+  return this.start;
+}
+
+DrawCanvas.prototype.updateStart = function(start) {
+  this.start = start;
+  this.duration = this.stop - this.start;
+}
+
+DrawCanvas.prototype.getStop = function() {
+  return this.stop;
+}
+
+DrawCanvas.prototype.updateStop = function(stop) {
+  this.stop = stop;
+  this.duration = this.stop - this.start;
 }
 
 DrawCanvas.prototype.drawItem = function(id) {
@@ -220,10 +239,8 @@ function translateScript(script) {
   return "<span title='"+script+"'>"+arr[arr.length-1]+"</span>";
 }
 
-function Page(data, tree, corrections) {
+function Page(data) {
   this.data = data;
-  this.tree = tree;
-  this.corrections = corrections;
 }
 
 Page.prototype.init = function() {
@@ -243,6 +260,7 @@ Page.prototype.initPopup = function() {
   this.popup = document.createElement("div");
   this.popup.id = "threadpopup"
   this.popup.innerHTML = "<h2>Thread list</h2><p>Select the thread you want to examine.</p>"
+  this.popupElement = []
   for (var i = 0; i < this.data.length; i++) {
     var canvas = this.initPopupElement(this.data[i]);
     this.popup.appendChild(canvas);
@@ -268,6 +286,7 @@ Page.prototype.initPopupElement = function(data) {
 
       var tree = new DataTree(buffer, textmap);
       var drawCanvas = new DrawCanvas(canvas, tree);
+      this.updateStartTime(drawCanvas);
       drawCanvas.line_height = 50;
       drawCanvas.dom.onclick = function() {
           this.popup.style.display = "none";
@@ -277,6 +296,7 @@ Page.prototype.initPopupElement = function(data) {
           this.initOverview()
       }.bind(this)
       drawCanvas.draw();
+      this.popupElement[this.popupElement.length] = drawCanvas;
     }.bind(this));
 
     canvas.height = "50"
@@ -285,11 +305,56 @@ Page.prototype.initPopupElement = function(data) {
     return canvas;
 }
 
+Page.prototype.updateStartTime = function (drawCanvas) {
+  // No start known yet.
+  if (!this.start) {
+    this.start = drawCanvas.getStart();
+    this.stop = drawCanvas.getStop();
+    return;
+  }
+
+  // Canvas has a higher start time. Set it to the lower one.
+  if (drawCanvas.getStart() >= this.start && drawCanvas.getStop() <= this.stop) {
+    drawCanvas.updateStart(this.start);
+    drawCanvas.updateStop(this.stop);
+    return;
+  }
+
+  // Canvas has a lower start time. Update the start time and
+  // redraw all known canvasses.
+  
+  if (drawCanvas.getStart() < this.start)
+    this.start = drawCanvas.getStart();
+  else
+    drawCanvas.updateStart(this.start);
+
+  if (drawCanvas.getStop() > this.stop)
+    this.stop = drawCanvas.getStop();
+  else
+    drawCanvas.updateStop(this.stop);
+
+  for (var i = 0; i < this.popupElement.length; i++) {
+    this.popupElement[i].updateStart(this.start);
+    this.popupElement[i].updateStop(this.stop);
+    this.popupElement[i].reset();
+    this.popupElement[i].draw();
+  }
+  if (this.canvas) {
+    this.canvas.updateStart(this.start);
+    this.canvas.updateStop(this.stop);
+    this.canvas.reset();
+    this.canvas.draw();
+  }
+} 
+
 Page.prototype.initGraph = function() {
   if (this.canvas)
       this.canvas.reset();
 
-  this.canvas = new DrawCanvas(document.getElementById("myCanvas"), this.tree);
+  var canvas = new DrawCanvas(document.getElementById("myCanvas"), this.tree);
+  this.updateStartTime(canvas);
+
+  this.canvas = canvas;
   this.resize();
   window.onresize = this.resize.bind(this);
   this.canvas.dom.onclick = this.clickCanvas.bind(this);
@@ -308,7 +373,7 @@ Page.prototype.initOverview = function() {
     chunk_cb: Page.prototype.computeOverview.bind(this)
   });
 
-  if (this.corrections != "undefined") {
+  if (this.corrections) {
     this.overview.engineOverview = this.corrections.engineOverview;
     this.overview.scriptOverview = this.corrections.scriptOverview;
     this.overview.scriptTimes = this.corrections.scriptTimes;
