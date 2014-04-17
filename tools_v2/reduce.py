@@ -50,9 +50,9 @@ for j in range(len(data)):
     shutil.copyfile(datapwd+"/"+data[j]["dict"], output+".dict."+str(j)+".js")
 
     ndata.append({
-        "corrections": output+'.corrections.'+str(j)+'.js',
-        "tree": output+'.tree.'+str(j)+'.tl',
-        "dict": output+'.dict.'+str(j)+'.js'
+        "corrections": os.path.basename(output)+'.corrections.'+str(j)+'.js',
+        "tree": os.path.basename(output)+'.tree.'+str(j)+'.tl',
+        "dict": os.path.basename(output)+'.dict.'+str(j)+'.js'
     })
 
 print "writing js file"
