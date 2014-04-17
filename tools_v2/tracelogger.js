@@ -58,10 +58,29 @@ function DrawCanvas(dom, tree) {
   this.tree = tree;
   this.line_height = 10;
   this.start = this.tree.start(0);
-  this.duration = this.tree.stop(0) - this.start;
+  this.stop = this.tree.stop(0);
+  this.duration = this.stop - this.start;
 
   this.drawQueue = []
   this.drawThreshold = 1
+}
+
+DrawCanvas.prototype.getStart = function() {
+  return this.start;
+}
+
+DrawCanvas.prototype.updateStart = function(start) {
+  this.start = start;
+  this.duration = this.stop - this.start;
+}
+
+DrawCanvas.prototype.getStop = function() {
+  return this.stop;
+}
+
+DrawCanvas.prototype.updateStop = function(stop) {
+  this.stop = stop;
+  this.duration = this.stop - this.start;
 }
 
 DrawCanvas.prototype.drawItem = function(id) {
@@ -220,10 +239,8 @@ function translateScript(script) {
   return "<span title='"+script+"'>"+arr[arr.length-1]+"</span>";
 }
 
-function Page(data, tree, corrections) {
+function Page(data) {
   this.data = data;
-  this.tree = tree;
-  this.corrections = corrections;
 }
 
 Page.prototype.init = function() {
@@ -243,6 +260,7 @@ Page.prototype.initPopup = function() {
   this.popup = document.createElement("div");
   this.popup.id = "threadpopup"
   this.popup.innerHTML = "<h2>Thread list</h2><p>Select the thread you want to examine.</p>"
+  this.popupElement = []
   for (var i = 0; i < this.data.length; i++) {
     var canvas = this.initPopupElement(this.data[i]);
     this.popup.appendChild(canvas);
@@ -267,7 +285,12 @@ Page.prototype.initPopupElement = function(data) {
         var corrections = JSON.parse(answer[2]);
 
       var tree = new DataTree(buffer, textmap);
+      if (!tree.hasChilds(0)) {
+          canvas.style.display = "none";
+          return;
+      }
       var drawCanvas = new DrawCanvas(canvas, tree);
+      this.updateStartTime(drawCanvas);
       drawCanvas.line_height = 50;
       drawCanvas.dom.onclick = function() {
           this.popup.style.display = "none";
@@ -277,6 +300,7 @@ Page.prototype.initPopupElement = function(data) {
           this.initOverview()
       }.bind(this)
       drawCanvas.draw();
+      this.popupElement[this.popupElement.length] = drawCanvas;
     }.bind(this));
 
     canvas.height = "50"
@@ -285,11 +309,56 @@ Page.prototype.initPopupElement = function(data) {
     return canvas;
 }
 
+Page.prototype.updateStartTime = function (drawCanvas) {
+  // No start known yet.
+  if (!this.start) {
+    this.start = drawCanvas.getStart();
+    this.stop = drawCanvas.getStop();
+    return;
+  }
+
+  // Canvas has a higher start time. Set it to the lower one.
+  if (drawCanvas.getStart() >= this.start && drawCanvas.getStop() <= this.stop) {
+    drawCanvas.updateStart(this.start);
+    drawCanvas.updateStop(this.stop);
+    return;
+  }
+
+  // Canvas has a lower start time. Update the start time and
+  // redraw all known canvasses.
+
+  if (drawCanvas.getStart() < this.start)
+    this.start = drawCanvas.getStart();
+  else
+    drawCanvas.updateStart(this.start);
+
+  if (drawCanvas.getStop() > this.stop)
+    this.stop = drawCanvas.getStop();
+  else
+    drawCanvas.updateStop(this.stop);
+
+  for (var i = 0; i < this.popupElement.length; i++) {
+    this.popupElement[i].updateStart(this.start);
+    this.popupElement[i].updateStop(this.stop);
+    this.popupElement[i].reset();
+    this.popupElement[i].draw();
+  }
+  if (this.canvas) {
+    this.canvas.updateStart(this.start);
+    this.canvas.updateStop(this.stop);
+    this.canvas.reset();
+    this.canvas.draw();
+  }
+}
+
 Page.prototype.initGraph = function() {
   if (this.canvas)
       this.canvas.reset();
 
-  this.canvas = new DrawCanvas(document.getElementById("myCanvas"), this.tree);
+  var canvas = new DrawCanvas(document.getElementById("myCanvas"), this.tree);
+  this.updateStartTime(canvas);
+
+  this.canvas = canvas;
   this.resize();
   window.onresize = this.resize.bind(this);
   this.canvas.dom.onclick = this.clickCanvas.bind(this);
@@ -308,7 +377,7 @@ Page.prototype.initOverview = function() {
     chunk_cb: Page.prototype.computeOverview.bind(this)
   });
 
-  if (this.corrections != "undefined") {
+  if (this.corrections) {
     this.overview.engineOverview = this.corrections.engineOverview;
     this.overview.scriptOverview = this.corrections.scriptOverview;
     this.overview.scriptTimes = this.corrections.scriptTimes;
@@ -318,9 +387,37 @@ Page.prototype.initOverview = function() {
 }
 
 Page.prototype.computeOverview = function () {
-  var dom = document.getElementById("engineOverview");
-  var output = "<h2>Engine Overview</h2>"+
-               "<table><tr><td>Engine</td><td>Percent</td>";
+  if (!this.tablesInited) {
+    var dom = document.getElementById("engineOverview");
+    var output = "<h2>Engine Overview</h2><table id='engineOverviewTable'></table>";
+    dom.innerHTML = output;
+
+    var overview = document.getElementById("engineOverviewTable");
+    var thead = overview.createTHead();
+    var row = thead.insertRow(0);
+    row.insertCell(0).innerHTML = "Engine";
+    row.insertCell(1).innerHTML = "Percent";
+    var tbody = overview.createTBody();
+
+    dom = document.getElementById("scriptOverview");
+    output = "<h2>Script Overview</h2><table id='scriptOverviewTable'></table>";
+    dom.innerHTML = output;
+
+    var overview = document.getElementById("scriptOverviewTable");
+    var thead = overview.createTHead();
+    var row = thead.insertRow(0);
+    row.insertCell(0).innerHTML = "Script";
+    row.insertCell(1).innerHTML = "Times called";
+    row.insertCell(1).innerHTML = "Times compiled";
+    row.insertCell(1).innerHTML = "Total time";
+    row.insertCell(1).innerHTML = "Spend time";
+    var tbody = overview.createTBody();
+
+    this.tablesInited = true;
+    this.engineOverviewTable = []
+    this.scriptOverviewTable = []
+    return;
+  }
 
   var total = 0;
   for (var i in this.overview.engineOverview) {
@@ -328,32 +425,50 @@ Page.prototype.computeOverview = function () {
   }
 
   for (var i in this.overview.engineOverview) {
-    output += "<tr><td>"+i+"</td><td>"+percent(this.overview.engineOverview[i]/total)+"%</td></tr>";
+      if (!(i in this.engineOverviewTable)) {
+          var overview = document.getElementById("engineOverviewTable").tBodies[0];
+          var row = overview.insertRow(overview.rows.length);
+          var engineCell = row.insertCell(0);
+          engineCell.innerHTML = i;
+          var percentCell = row.insertCell(1)
+          this.engineOverviewTable[i] = percentCell;
+      }
+      this.engineOverviewTable[i].innerHTML = percent(this.overview.engineOverview[i]/total)+"%";
   }
-  output += "</table>";
-  dom.innerHTML = output;
 
-  dom = document.getElementById("scriptOverview");
-  var output = "<h2>Script Overview</h2>"+
-               "<table><tr><td>Script</td><td>Times called</td><td>Times compiled</td><td>Total time</td><td>Spend time</td></tr>";
   for (var script in this.overview.scriptOverview) {
     if (!this.overview.scriptTimes[script]["IonCompilation"])
       this.overview.scriptTimes[script]["IonCompilation"] = 0
-    output += "<tr><td>"+script+"</td><td>"+this.overview.scriptTimes[script][script]+"</td><td>"+this.overview.scriptTimes[script]["IonCompilation"]+"</td><td>";
+    if (!(script in this.scriptOverviewTable)) {
+      var overview = document.getElementById("scriptOverviewTable").tBodies[0];
+      var row = overview.insertRow(overview.rows.length);
+      row.insertCell(0);
+      row.insertCell(1);
+      row.insertCell(2);
+      row.insertCell(3);
+      row.insertCell(4);
+      this.scriptOverviewTable[script] = row;
+    }
+
+    this.scriptOverviewTable[script].cells[0].innerHTML = script;
+    this.scriptOverviewTable[script].cells[1].innerHTML = this.overview.scriptTimes[script][script];
+    this.scriptOverviewTable[script].cells[2].innerHTML = this.overview.scriptTimes[script]["IonCompilation"];
+
     var script_total = 0;
     for (var j in this.overview.scriptOverview[script]) {
       if (j != script)
           script_total += this.overview.scriptOverview[script][j];
     }
-    output += percent(script_total/total)+"%</td><td>";
+
+    this.scriptOverviewTable[script].cells[3].innerHTML = percent(script_total/total)+"%";
+
+    var output = "";
     for (var j in this.overview.scriptOverview[script]) {
       if (j != script)
         output += ""+j+": "+percent(this.overview.scriptOverview[script][j]/script_total)+"%, ";
     }
-    output += "</td></tr>"
+    this.scriptOverviewTable[script].cells[4].innerHTML = output;
   }
-  output += "</table>"
-  dom.innerHTML = output;
 }
 
 Page.prototype.clickCanvas = function(e) {
@@ -376,7 +491,7 @@ Page.prototype.clickCanvas = function(e) {
 
       if (info.substring(0,6) == "script")
         output += translateScript(info.substring(6)) + "<br />"
-      else 
+      else
         output += info + "<br />"
     }
 
