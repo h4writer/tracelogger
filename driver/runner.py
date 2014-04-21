@@ -76,7 +76,7 @@ class OctaneRunner(Runner):
                 'zlib']
 
     def run_script(self, script):
-        print utils.run("cd "+self.benchmarks+"/octane; "+self.engine.js+" --ion-parallel-compile=on run-"+script+".js")
+        print utils.run("cd "+self.benchmarks+"/octane; TLOPTIONS=DisableMainThread "+self.engine.js+" -e 'startTraceLogger();' -f run-"+script+".js")
         return "/tmp/tl-data.json"
 
 class SSRunner(Runner):
@@ -113,7 +113,7 @@ class SSRunner(Runner):
             "string-validate-input"]
 
     def run_script(self, script):
-        print utils.run("cd "+self.benchmarks+"/SunSpider/tests/sunspider-1.0.1; "+self.engine.js+" --ion-parallel-compile=on "+script+".js")
+        print utils.run("cd "+self.benchmarks+"/SunSpider/tests/sunspider-1.0.1; TLOPTIONS=DisableMainThread "+self.engine.js+" -e 'startTraceLogger();' -f "+script+".js")
         return "/tmp/tl-data.json"
 
 class PeaceKeeperRunner(Runner):
@@ -130,5 +130,5 @@ class PeaceKeeperRunner(Runner):
             "stringWeighted"]
 
     def run_script(self, script):
-        print utils.run("cd "+self.benchmarks+"/PeaceKeeper; "+self.engine.js+" --ion-parallel-compile=on "+script+".js")
+        print utils.run("cd "+self.benchmarks+"/PeaceKeeper; TLOPTIONS=DisableMainThread "+self.engine.js+" -e 'startTraceLogger();' -f "+script+".js")
         return "/tmp/tl-data.json"
