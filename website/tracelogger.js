@@ -86,7 +86,7 @@ DrawCanvas.prototype.updateStop = function(stop) {
 DrawCanvas.prototype.drawItem = function(id) {
   var start = this.tree.start(id) - this.start;
   var stop = this.tree.stop(id) - this.start;
-  var color = this.color(this.tree.text(id));
+  var color = this.tree.color(id);
 
   if (!this.drawRect(start, stop, color)) {
     this.futureDrawQueue[this.futureDrawQueue.length] = id
@@ -124,46 +124,6 @@ DrawCanvas.prototype.drawRect = function(start, stop, color) {
   }
   this.ctx.fillRect(0, y_stop, x_stop, this.line_height);
   return true;
-}
-
-DrawCanvas.prototype.color = function (info) {
-  if (info == "IonCompilation")
-    return "green";
-  if (info == "IonLinking")
-    return "green";
-
-  if (info == "YarrCompile")
-    return "#BE8CFF";
-  if (info == "YarrJIT")
-    return "#BE8CFF";
-  if (info == "YarrInterpreter")
-    return "#BE8CFF";
-
-  if (info == "MinorGC")
-    return "#CCCCCC";
-
-  if (info == "GC")
-    return "#666666";
-  if (info == "GCSweeping")
-    return "#666666";
-  if (info == "GCAllocation")
-    return "#666666";
-
-  if (info == "Interpreter")
-    return "#FFFFFF";
-  if (info == "Baseline")
-    return "#FFE75E";
-  if (info == "IonMonkey")
-    return "#54D93D";
-
-  if (info == "ParserCompileScript")
-      return "#DB0000";
-  if (info == "ParserCompileLazy")
-      return "#A30000";
-  if (info == "ParserCompileFunction")
-      return "#CC8585";
-
-  return "white";
 }
 
 DrawCanvas.prototype.backtraceAtPos = function (x, y) {
@@ -294,8 +254,10 @@ Page.prototype.initPopupElement = function(data) {
       drawCanvas.line_height = 50;
       drawCanvas.dom.onclick = function() {
           this.popup.style.display = "none";
+          this.textmap = textmap;
           this.tree = tree;
-          this.corrections = corrections;
+          if (corrections)
+            this.corrections = corrections;
           this.initGraph()
           this.initOverview()
       }.bind(this)
@@ -430,12 +392,13 @@ Page.prototype.computeOverview = function () {
     total += this.overview.engineOverview[i];
   }
 
+  var colors = new TextToColor(this.textmap);
   for (var i in this.overview.engineOverview) {
       if (!(i in this.engineOverviewTable)) {
           var overview = document.getElementById("engineOverviewTable").tBodies[0];
           var row = overview.insertRow(overview.rows.length);
           var engineCell = row.insertCell(0);
-          engineCell.innerHTML = i;
+          engineCell.innerHTML = "<span class='block' style='background-color:"+colors.getColor(i)+";'></span>"+i;
           var percentCell = row.insertCell(1)
           this.engineOverviewTable[i] = percentCell;
       }

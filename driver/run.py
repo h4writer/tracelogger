@@ -31,6 +31,21 @@ for engine in engines:
     runner.PeaceKeeperRunner(rev, engine, submit, normaljs).bench();
     submit.Finish()
 
+######### SAVE COLORS ############
+
+utils.run(engines.shell() + " -e ''")
+
+fp = open("/tmp/tl-data.json", "r")
+data = json.load(fp)
+fp.close()
+
+toolsv2 = utils.config.get('main', 'toolsv2')+
+colors = utils.run(engines.shell() + " -f '"+toolsv2+"/engine.js' -e 'var textmap = JSON.parse(read(\""+data[0]["dict"]+"\")); var colors = TextToColor(textmap); print(JSON.stringify(textmap))'")
+
+fp = open(uploadPath+"/colors.js", "w")
+fp.write("var colors = "+colors);
+fp.close()
+
 ######### UPLOAD #################
 
 logDir = utils.config.get('main', 'logDir')

@@ -19,5 +19,6 @@ def InitConfig(name):
     config.read(name)
 
 def run(cmd):
+    print cmd
     output = subprocess.check_output(cmd, shell=True)
     return output
