@@ -89,6 +89,10 @@ var TLGraph = function(engine, suite, script) {
 };
 
 TLGraph.prototype.init = function(data) {
+  for (var i=0; i<data.length; i++) {   
+    var label = data[i]["label"].replace(/ =.*/, "")
+    data[i]["color"] = colors[label];
+  } 
   this.placeholder = this.dom.find(".placeholder");
   var plot = $.plot(this.placeholder, data, {
 	    series: {
