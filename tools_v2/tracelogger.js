@@ -34,18 +34,23 @@ function request (files, callback) {
 }
 
 var url = GetUrlValue("data");
-if (/^[a-zA-Z0-9-.]*$/.test(url)) {
+if (/^\w+:\/\//.test(url))
+  throw new Error("Loading logs from absolute URLs is disallowed for security reasons.");
 
-  request([url], function (answer) {
-    var json = answer[0];
-    var pos = json.indexOf("=");
-    json = json.substr(pos+1);
-
-    var data = JSON.parse(json);
-    var page = new Page(data);
-    page.init()
-  });
+if (url[url.length-1] == '/') {
+  baseUrl += url;
+  url = 'tl-data.json';
 }
+
+request([url], function (answer) {
+  var json = answer[0];
+  var pos = json.indexOf("=");
+  json = json.substr(pos+1);
+
+  var data = JSON.parse(json);
+  var page = new Page(data);
+  page.init()
+});
 
 
 function percent(double) {
