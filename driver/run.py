@@ -22,7 +22,7 @@ output = subprocess.check_call("cd "+pwd+"; ./compile.sh", shell=True)
 rev = utils.run('hg parent --template "{node|short}" --cwd /home/h4writer/Build/mozilla-inbound')
 print rev
 
-engines = [engine.X86Engine()]
+engines = [engine.X86Engine(), engine.X86NoThreadEngine()]
 for engine in engines:
     submit = submitter.Submitter()
     submit.Start(rev, engine)
