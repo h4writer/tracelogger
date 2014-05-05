@@ -37,9 +37,12 @@ var url = GetUrlValue("data");
 if (/^\w+:\/\//.test(url))
   throw new Error("Loading logs from absolute URLs is disallowed for security reasons.");
 
-if (url[url.length-1] == '/') {
-  baseUrl += url;
-  url = 'tl-data.json';
+var pos = url.lastIndexOf("/");
+if (pos != -1) {
+  baseUrl += url.substring(0, pos+1);
+  url = url.substring(pos+1);
+  if (url.length == 0)
+      url = 'tl-data.json';
 }
 
 request([url], function (answer) {
