@@ -28,6 +28,7 @@ for engine in engines:
     submit.Start(rev, engine)
     runner.OctaneRunner(rev, engine, submit, normaljs).bench();
     runner.SSRunner(rev, engine, submit, normaljs).bench();
+    runner.KrakenRunner(rev, engine, submit, normaljs).bench();
     runner.PeaceKeeperRunner(rev, engine, submit, normaljs).bench();
     submit.Finish()
 

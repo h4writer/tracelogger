@@ -116,6 +116,31 @@ class SSRunner(Runner):
         print utils.run("cd "+self.benchmarks+"/SunSpider/tests/sunspider-1.0.1; TLOPTIONS=DisableMainThread "+self.engine.js+" -e 'startTraceLogger();' -f "+script+".js")
         return "/tmp/tl-data.json"
 
+class KrakenRunner(Runner):
+    def __init__(self, revision, engine, submitter, normaljs):
+        Runner.__init__(self, "Kraken", revision, engine, submitter, normaljs) 
+    
+    def scripts(self):
+        return [
+            "ai-astar",
+            "audio-beat-detection",
+            "audio-dft",
+            "audio-fft",
+            "audio-oscillator",
+            "imaging-gaussian-blur",
+            "imaging-darkroom",
+            "imaging-desaturate",
+            "json-parse-financial",
+            "json-stringify-tinderbox",
+            "stanford-crypto-aes",
+            "stanford-crypto-ccm",
+            "stanford-crypto-pbkdf2",
+            "stanford-crypto-sha256-iterative"]
+
+    def run_script(self, script):
+        print utils.run("cd "+self.benchmarks+"/kraken/tests/kraken-1.1; TLOPTIONS=DisableMainThread "+self.engine.js+" -f "+script+"-data.js -e 'startTraceLogger();' -f "+script+".js")
+        return "/tmp/tl-data.json"
+
 class PeaceKeeperRunner(Runner):
     def __init__(self, revision, engine, submitter, normaljs):
         Runner.__init__(self, "PeaceKeeper", revision, engine, submitter, normaljs) 
