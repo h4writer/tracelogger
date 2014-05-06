@@ -347,6 +347,7 @@ Page.prototype.initOverview = function() {
     chunk_cb: Page.prototype.computeOverview.bind(this)
   });
 
+  this.maybeReinitTables();
   if (this.corrections) {
     this.overview.engineOverview = this.corrections.engineOverview;
     this.overview.scriptOverview = this.corrections.scriptOverview;
@@ -354,6 +355,21 @@ Page.prototype.initOverview = function() {
   }
 
   this.overview.init();
+}
+
+Page.prototype.maybeReinitTables = function() {
+  var engineOverviewTable = document.getElementById("engineOverviewTable");
+  if (engineOverviewTable) {
+      // Re-init the model and the view
+      engineOverviewTable.tBodies[0].innerHTML = '';
+      this.engineOverviewTable = [];
+  }
+
+  var scriptOverviewTable = document.getElementById("scriptOverviewTable");
+  if (scriptOverviewTable) {
+      scriptOverviewTable.tBodies[0].innerHTML = '';
+      this.scriptOverviewTable = [];
+  }
 }
 
 Page.prototype.computeOverview = function () {
