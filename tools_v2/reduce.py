@@ -9,7 +9,10 @@ argparser = argparse.ArgumentParser(description='Reduce the logfile to make suit
 argparser.add_argument('js_shell', help='a js shell environment')
 argparser.add_argument('js_file', help='the js file to parse')
 argparser.add_argument('output_name', help='the name of the output (without the .js)')
+argparser.add_argument('--no-corrections', action='store_true', help='don\'t compute the corrections files')
 args = argparser.parse_args()
+
+corrections = not args.no_corrections
 
 shell = args.js_shell;
 jsfile = args.js_file;
@@ -40,20 +43,23 @@ for j in range(len(data)):
         treeFile.write(struct.pack('>c', chr(int(i))))
     treeFile.close()
 
-    print corr
-    corrOutput = subprocess.check_output(corr, shell=True)
-    corrFile = open(output+'.corrections.'+str(j)+'.js', 'wb')
-    corrFile.write(corrOutput);
-    corrFile.close()
+    if corrections:
+        print corr
+        corrOutput = subprocess.check_output(corr, shell=True)
+        corrFile = open(output+'.corrections.'+str(j)+'.js', 'wb')
+        corrFile.write(corrOutput);
+        corrFile.close()
 
     print "copy textmap"
     shutil.copyfile(datapwd+"/"+data[j]["dict"], output+".dict."+str(j)+".js")
 
     ndata.append({
-        "corrections": os.path.basename(output)+'.corrections.'+str(j)+'.js',
         "tree": os.path.basename(output)+'.tree.'+str(j)+'.tl',
         "dict": os.path.basename(output)+'.dict.'+str(j)+'.js'
     })
+
+    if corrections:
+        ndata[-1]["corrections"] = os.path.basename(output)+'.corrections.'+str(j)+'.js'
 
 print "writing js file"
 
