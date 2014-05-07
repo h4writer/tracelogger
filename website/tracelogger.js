@@ -353,6 +353,7 @@ Page.prototype.initOverview = function() {
     this.overview.scriptTimes = this.corrections.scriptTimes;
   }
 
+  this.tablesInited = false;
   this.overview.init();
 }
 
