@@ -47,24 +47,29 @@ def getkey():
 def clearscreen():
     print chr(27) + "[2J"
 
-def makeDisplay():
-    global line, opened
-    line = 0
+def updateDisplay():
+    global opened, display
+    display = []
     if len(opened) == 0:
         for i in range(len(data)):
-            printline(data[i]["tree"])
+            display.append(data[i]["tree"])
     else:
-        printline(data[opened[0]]["tree"])
+        display.append(data[opened[0]]["tree"])
 
         overview = shell+" -e 'var data = "+json.dumps(data[opened[0]])+";var opened = "+json.dumps(opened[1:])+"' -f "+pwd+"/navigate.js"
         lines = subprocess.check_output(overview, shell=True)
         lines = lines.split("\n")
-        for i in lines:
-            printline(i)
+        display = display + lines
 
-selected = 0
-line = 0
-opened = []
+def makeDisplay():
+    global line
+
+    start = max(selected - 10, 0)
+    stop = start + 40
+
+    line = start
+    for i in display[start:stop]:
+        printline(i);
 
 def printline(data):
     global selected, line
@@ -73,14 +78,20 @@ def printline(data):
     else:
         print data
     line += 1
+selected = 0
+line = 0
+opened = []
+display = []
 choice = "a"
+updateDisplay()
+
 while 1:
     clearscreen()
     makeDisplay()
 
     print(opened)
     choice = getkey()
-    if choice == 'x':
+    if choice == 'x' or choice == 'q':
         exit()
     if choice == '\x1b':
         choice = getkey()+getkey()
@@ -90,10 +101,22 @@ while 1:
         if choice == '[B': # down
             if selected + 1 != line:
                 selected += 1
+        if choice == '[6': # PgDn
+            if selected + 10 < line:
+                selected += 10
+            else:
+                selected = line - 1;
+        if choice == '[5': # PgUp
+            if selected - 10 > 0:
+                selected -= 10
+            else:
+                selected = 0;
     if choice == chr(13): # enter
         if selected < len(opened):
             opened = opened[:selected]
             selected = len(opened)
+            updateDisplay()
         else:
             opened.append(selected - len(opened))
             selected = len(opened) - 1 
+            updateDisplay()
