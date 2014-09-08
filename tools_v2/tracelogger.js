@@ -434,7 +434,7 @@ Page.prototype.computeOverview = function () {
 
     var script_total = 0;
     for (var j in this.overview.scriptOverview[script]) {
-      if (j != script)
+      if (j != script && j != "MinorGC" && j != "GC" && j != "TL")
           script_total += this.overview.scriptOverview[script][j];
     }
 
@@ -442,7 +442,7 @@ Page.prototype.computeOverview = function () {
 
     var output = "";
     for (var j in this.overview.scriptOverview[script]) {
-      if (j != script)
+      if (j != script && j != "MinorGC" && j != "GC" && j != "TL")
         output += ""+j+": "+percent(this.overview.scriptOverview[script][j]/script_total)+"%, ";
     }
     this.scriptOverviewTable[script].cells[4].innerHTML = output;

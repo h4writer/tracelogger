@@ -14,7 +14,7 @@ if (typeof window === 'undefined') {
 function TextToColor(textmap) {
   var colors = ["#0044ff", "#8c4b00", "#cc5c33", "#ff80c4", "#ffbfd9", "#ff8800", "#8c5e00", "#adcc33", "#b380ff", "#bfd9ff", "#ffaa00", "#8c0038", "#bf8f30", "#f780ff", "#cc99c9", "#aaff00", "#000073", "#452699", "#cc8166", "#cca799", "#000066", "#992626", "#cc6666", "#ccc299", "#ff6600", "#526600", "#992663", "#cc6681", "#99ccc2", "#ff0066", "#520066", "#269973", "#61994d", "#739699", "#ffcc00", "#006629", "#269199", "#94994d", "#738299", "#ff0000", "#590000", "#234d8c", "#8c6246", "#7d7399", "#ee00ff", "#00474d", "#8c2385", "#8c7546", "#7c8c69", "#eeff00", "#4d003d", "#662e1a", "#62468c", "#8c6969", "#6600ff", "#4c2900", "#1a6657", "#8c464f", "#8c6981", "#44ff00", "#401100", "#1a2466", "#663355", "#567365", "#d90074", "#403300", "#101d40", "#59562d", "#66614d", "#cc0000", "#002b40", "#234010", "#4c2626", "#4d5e66", "#00a3cc", "#400011", "#231040", "#4c3626", "#464359", "#0000bf", "#331b00", "#80e6ff", "#311a33", "#4d3939", "#a69b00", "#003329", "#80ffb2", "#331a20", "#40303d", "#00a658", "#40ffd9", "#ffc480", "#ffe1bf", "#332b26", "#8c2500", "#9933cc", "#80fff6", "#ffbfbf", "#303326", "#005e8c", "#33cc47", "#b2ff80", "#c8bfff", "#263332", "#00708c", "#cc33ad", "#ffe680", "#f2ffbf", "#262a33", "#388c00", "#335ccc", "#8091ff", "#bfffd9"]
 
-  this.map = []
+  this.map = {}
 
   var usedColors = 0;
   for(var i=0; i<textmap.length; i++) {
@@ -104,6 +104,8 @@ DataTree.prototype.start = function(id) {
 }
 
 DataTree.prototype.stop = function(id) {
+  if (id == 0)
+      return this.stop(this.childs(id)[this.childs(id).length - 1]);
   var p1 = this.view.getUint32(id * this.itemSize + 8);
   var p2 = this.view.getUint32(id * this.itemSize + 12);
   return p1*4294967295+p2
@@ -305,13 +307,13 @@ Overview.prototype.processTreeItem = function(script, id) {
 
   if (script != "") {
     if (!this.scriptTimes[script])
-        this.scriptTimes[script] = [];
+        this.scriptTimes[script] = {};
     if (!this.scriptTimes[script][info])
         this.scriptTimes[script][info] = 0;
     this.scriptTimes[script][info] += 1;
 
     if (!this.scriptOverview[script])
-        this.scriptOverview[script] = [];
+        this.scriptOverview[script] = {};
     if (!this.scriptOverview[script][info])
         this.scriptOverview[script][info] = 0;
     this.scriptOverview[script][info] += time;
