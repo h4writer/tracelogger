@@ -58,6 +58,8 @@ tr.inactive td {
     width: 800px;
     text-align: center;
     box-shadow: 5px 5px 30px #888888;
+    max-height: 95%;
+    overflow-y: auto;
 }
 
 #threadpopup canvas {
