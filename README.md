@@ -2,9 +2,12 @@ Tracelogger
 ===========
 
 Tracelogger is a tool in the javascript engine that can pinpoint which engine in firefox is used.
-To create a log file you need to recompile the js shell with --enable-trace-logging.
+To create a log file you need to recompile the js shell with __--enable-trace-logging__.
 Afterwards every execution of a file will result in the creation of a /tmp/tl-data.json file.
 This branch contains the python scripts to create a nice graph out of tracelogging files.
+
+__Update__: since FF38 there is no need to recompile the shell or browser. You need to specify the environment variables:
+TLLOG=Default TLOPTIONS=EnableMainThread,EnableOffThread,EnableGraph
 
 Tools V2
 ========
