@@ -66,6 +66,8 @@ def makeDisplay():
 
     start = max(selected - 10, 0)
     stop = start + 40
+    if stop > len(display):
+        start = max(0, len(display) - 40)
 
     line = start
     for i in display[start:stop]:

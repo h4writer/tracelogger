@@ -104,11 +104,12 @@ DataTree.prototype.start = function(id) {
 }
 
 DataTree.prototype.stop = function(id) {
-  if (id == 0)
-      return this.stop(this.childs(id)[this.childs(id).length - 1]);
   var p1 = this.view.getUint32(id * this.itemSize + 8);
   var p2 = this.view.getUint32(id * this.itemSize + 12);
-  return p1*4294967295+p2
+  var stop = p1*4294967295+p2
+  if (stop == 0)
+      return this.stop(this.childs(id)[this.childs(id).length - 1]);
+  return stop;
 }
 
 DataTree.prototype.textId = function(id) {
