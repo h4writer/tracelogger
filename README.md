@@ -26,10 +26,10 @@ Tools V2
 When you need to serve the graphs online or when it takes the browser too long to read the files you can reduce the graphs using a python script.
 
 - Download the full "tools_v2" directory
-- Run 'pypy reduce.py /tmp/tl-data.json /somepath/somename'
+- Run 'python reduce.py /tmp/tl-data.json /somepath/somename'
 - This will create /somepath/somename.json and save all files with the prefix somename
 
-Note: using 'python' instead of 'pypy' will work, but is factor 1000 times slower
+Note: using 'pypy' instead of 'python' will sometimes not work. Some pypy versions contain a bug in their JIT. So if the reduced file is empty, you are probably hitting that bug.
 
 **3. navigate.py: Read log files interactive in the console**
 
