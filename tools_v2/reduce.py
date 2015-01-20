@@ -55,23 +55,26 @@ class TreeReader(object):
 
         self.fp.write(s)
 
-    def getStop(self):
-        parentItem = self.readItem(0) 
-        if parentItem.stop is not 0:
-            return parentItem.stop
+    def _getStop(self, item):
+        if item.stop is not 0:
+            return item.stop
 
         # If there are no children. Still use parentItem.stop
-        if parentItem.children is 0:
-            return parentItem.stop
+        if item.children is 0:
+            return item.stop
 
         # The parent item doesn't contain the stop information.
         # Get the last tree item for the stop information.
-        itemId = 1
+        childId = item.id + 1
         while True:
-            item = self.readItem(itemId)
-            if item.nextId is 0:
-                return item.stop
-            itemId = item.nextId
+            child = self.readItem(childId)
+            if child.nextId is 0:
+                return self._getStop(child)
+            childId = child.nextId
+
+    def getStop(self):
+        parentItem = self.readItem(0)
+        return self._getStop(parentItem);
         
 class CreateDataTree(TreeReader):
     def __init__(self, fp, start, stop):
@@ -155,7 +158,7 @@ class Overview:
         self.scriptOverview[script][info] += time;
 
 def visitItem(oldTree, newTree, parent, oldItem):
-    if oldItem.stop - oldItem.start >= threshold:
+    if oldItem.stop - oldItem.start >= threshold or oldItem.stop == 0:
         newId = newTree.addChild(parent, oldItem) 
 
         if oldItem.children is 0:
