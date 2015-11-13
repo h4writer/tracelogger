@@ -175,6 +175,12 @@ DrawCanvas.prototype.draw = function() {
 }
 
 DrawCanvas.prototype.drawQueue = function() {
+  var queuestatus = document.getElementById("queueStatus");
+  if (queueStatus)
+    queuestatus.innerHTML = "Events in current drawQueue: "
+        + this.drawQueue.length
+        + " and in futureDrawQueue: "
+        + this.futureDrawQueue.length;
   var queue = this.drawQueue.splice(0,10000);
   for (var i=0; i<queue.length; i++) {
     this.drawItem(queue[i])
