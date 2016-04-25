@@ -65,7 +65,7 @@ function DrawCanvas(dom, tree) {
   this.ctx = dom.getContext("2d");
   this.tree = tree;
   this.line_height = 10;
-  this.start = this.tree.start(0);
+  this.start = this.tree.start(1);
   this.stop = this.tree.stop(0);
   this.duration = this.stop - this.start;
 
@@ -209,10 +209,15 @@ function translateScript(script) {
 
 function Page(data) {
   this.data = data;
+  this.settings = {
+    relative: true,
+    absoluteunit: 10000
+  }
 }
 
 Page.prototype.init = function() {
   this.initPopup()
+  this.initSettings()
 }
 
 Page.prototype.initPopup = function() {
@@ -220,6 +225,7 @@ Page.prototype.initPopup = function() {
   var a = document.createElement("a");
   a.innerHTML = "show thread list";
   a.href = "#";
+  a.className = "nav";
   a.onclick = function() {
       this.popup.style.display = "block";
   }.bind(this)
@@ -227,6 +233,7 @@ Page.prototype.initPopup = function() {
 
   this.popup = document.createElement("div");
   this.popup.id = "threadpopup"
+  this.popup.className = "popup"
   this.popup.innerHTML = "<h2>Thread list</h2><p>Select the thread you want to examine.</p>"
   this.popupElement = []
   for (var i = 0; i < this.data.length; i++) {
@@ -235,6 +242,41 @@ Page.prototype.initPopup = function() {
   }
 
   document.body.appendChild(this.popup);
+}
+
+Page.prototype.initSettings = function() {
+
+  var a = document.createElement("a");
+  a.innerHTML = "settings";
+  a.href = "#";
+  a.className = "nav";
+  a.onclick = function() {
+      this.settingspopup.style.display = "block";
+  }.bind(this)
+  document.body.insertBefore(a, document.getElementsByTagName("h1")[0].nextSibling);
+
+  this.settingspopup = document.createElement("div");
+  this.settingspopup.id = "settingspopup"
+  this.settingspopup.className = "popup"
+  this.settingspopup.innerHTML =
+    "<h2>Settings</h2>" + 
+    "<p>Timings: <select><option "+(this.settings.relative?"":"selected")+">absolute</option><option "+(this.settings.relative?"selected":"")+">relative</option></select></p>"+
+    "<p>Absolute unit: <input type='text' value='"+this.settings.absoluteunit+"' /> ops/unit</p>"+
+    "<p><input type='button' value='close' /></p>"
+  document.body.appendChild(this.settingspopup);
+
+  var settings = this.settings;
+  this.settingspopup.getElementsByTagName("select")[0].onchange = function() {
+      settings.relative = this.value == "relative"
+  }
+  this.settingspopup.getElementsByTagName("input")[0].onchange = function() {
+      settings.absoluteunit = this.value
+  }
+  this.settingspopup.getElementsByTagName("input")[1].onclick = function() {
+      this.settingspopup.style.display = "none";
+      this.computeOverview();
+  }.bind(this)
+
 }
 
 Page.prototype.initPopupElement = function(data) {
@@ -367,8 +409,10 @@ Page.prototype.computeOverview = function () {
     var thead = overview.createTHead();
     var row = thead.insertRow(0);
     row.insertCell(0).innerHTML = "Engine";
-    row.insertCell(1).innerHTML = "Percent";
+    row.insertCell(1).innerHTML = "Times called";
+    row.insertCell(2).innerHTML = "Total time";
     row.cells[1].className = "sorttable_numeric";
+    row.cells[2].className = "sorttable_numeric";
     var tbody = overview.createTBody();
     sorttable.makeSortable(overview);
 
@@ -408,10 +452,15 @@ Page.prototype.computeOverview = function () {
           var row = overview.insertRow(overview.rows.length);
           var engineCell = row.insertCell(0);
           engineCell.innerHTML = "<span class='block' style='background-color:"+colors.getColor(i)+";'></span>"+i;
-          var percentCell = row.insertCell(1)
-          this.engineOverviewTable[i] = percentCell;
+          var timesCell = row.insertCell(1)
+          var totalCell = row.insertCell(2)
+          this.engineOverviewTable[i] = row;
       }
-      this.engineOverviewTable[i].innerHTML = percent(this.overview.engineOverview[i]/total)+"%";
+      this.engineOverviewTable[i].cells[1].innerHTML = this.overview.engineAmount[i];
+      if (this.settings.relative)
+          this.engineOverviewTable[i].cells[2].innerHTML = percent(this.overview.engineOverview[i]/total)+"%";
+      else
+          this.engineOverviewTable[i].cells[2].innerHTML = Math.round(this.overview.engineOverview[i]/this.settings.absoluteunit);
   }
 
   for (var script in this.overview.scriptOverview) {
@@ -438,12 +487,20 @@ Page.prototype.computeOverview = function () {
           script_total += this.overview.scriptOverview[script][j];
     }
 
-    this.scriptOverviewTable[script].cells[3].innerHTML = percent(script_total/total)+"%";
+
+    if (this.settings.relative)
+        this.scriptOverviewTable[script].cells[3].innerHTML = percent(script_total/total)+"%";
+    else
+        this.scriptOverviewTable[script].cells[3].innerHTML = Math.round(script_total/this.settings.absoluteunit);
 
     var output = "";
     for (var j in this.overview.scriptOverview[script]) {
-      if (j != script)
-        output += ""+j+": "+percent(this.overview.scriptOverview[script][j]/script_total)+"%, ";
+      if (j != script) {
+        if (this.settings.relative)
+          output += ""+j+": "+percent(this.overview.scriptOverview[script][j]/script_total)+"%, ";
+        else
+          output += ""+j+": "+Math.round(this.overview.scriptOverview[script][j]/this.settings.absoluteunit)+", ";
+      }
     }
     this.scriptOverviewTable[script].cells[4].innerHTML = output;
   }

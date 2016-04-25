@@ -1,3 +1,6 @@
+// Test if in worker
+var worker = (typeof importScripts === 'function');
+
 if (typeof window === 'undefined') {
   var running = []
   function setTimeout(func, time) {
@@ -231,6 +234,7 @@ function Overview(tree, settings) {
   this.tree = tree;
   this.settings = settings;
   this.engineOverview = {}
+  this.engineAmount = {}
   this.scriptOverview = {}
   this.scriptTimes = {}
 
@@ -241,22 +245,48 @@ function Overview(tree, settings) {
   if (typeof this.settings.maxThreshold == "undefined")
     this.settings.maxThreshold = 0;
 
-  // hack to increase speed 3fold
-  /*
-  for (var i=0; i < tree.textmap.length; i++) {
-    var info = tree.textmap[i].split(",");
-    if (this.hasScriptInfo(info[0])) {
-      var script = this.getScriptInfo(info);
-      this.scriptOverview[script] = {};
-      this.scriptTimes[script] = {"c":0, "s":0};
-    }
-  }*/
-
   this.visit = 0
 }
 
 Overview.prototype.init = function() {
-  this.processQueue();
+  if (worker) {
+    this.processQueue();
+  } else {
+      var chunk_cb = this.settings.chunk_cb;
+      this.settings.chunk_cb = null;
+
+      var wor = new Worker('engine.js');
+      wor.addEventListener('message', function(e) {
+          this.engineOverview = e.data.engineOverview;
+          this.engineAmount = e.data.engineAmount;
+          this.scriptOverview = e.data.scriptOverview;
+          this.scriptTimes = e.data.scriptTimes;
+          chunk_cb();
+      }.bind(this), false);
+
+      wor.postMessage({type: "overview",
+                       buffer:this.tree.buffer,
+                       textmap:this.tree.textmap,
+                       settings:this.settings});
+  }
+}
+
+if (worker) {
+    addEventListener('message', function(e) {
+        if (e.data.type == "overview") {
+            var overview;
+            e.data.settings.chunk_cb = function() {
+                self.postMessage({
+                    engineOverview: overview.engineOverview,
+                    engineAmount: overview.engineAmount,
+                    scriptOverview: overview.scriptOverview,
+                    scriptTimes: overview.scriptTimes,
+                });
+            }
+            overview = new Overview(new DataTree(e.data.buffer, e.data.textmap), e.data.settings);
+            overview.init();
+        }
+    });
 }
 
 Overview.prototype.isScriptInfo = function(tag) {
@@ -303,7 +333,10 @@ Overview.prototype.processTreeItem = function(script, id) {
   if (time > 0 && !this.isScriptInfo(info)) {
     if (!this.engineOverview[info])
       this.engineOverview[info] = 0;
+    if (!this.engineAmount[info])
+      this.engineAmount[info] = 0;
     this.engineOverview[info] += time;
+    this.engineAmount[info]++;
   }
 
   if (script != "") {
