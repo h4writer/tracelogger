@@ -68,9 +68,25 @@ function DrawCanvas(dom, tree) {
   this.start = this.tree.start(1);
   this.stop = this.tree.stop(0);
   this.duration = this.stop - this.start;
+  this.hiddenList = [];
+
+  for(var i=0; i<this.tree.textmap.length; i++) {
+      if (this.tree.colors.getColor(this.tree.textmap[i]) == "white")
+          this.hiddenList[i] = true;
+  }
 
   this.drawQueue = []
   this.drawThreshold = 1
+}
+
+DrawCanvas.prototype.show = function(textId) {
+    this.hiddenList[textId] = false;
+}
+DrawCanvas.prototype.hide = function(textId) {
+    this.hiddenList[textId] = true;
+}
+DrawCanvas.prototype.isHidden = function(textId) {
+    return !!this.hiddenList[textId]
 }
 
 DrawCanvas.prototype.getStart = function() {
@@ -95,8 +111,9 @@ DrawCanvas.prototype.drawItem = function(id) {
   var start = this.tree.start(id) - this.start;
   var stop = this.tree.stop(id) - this.start;
   var color = this.tree.color(id);
+  var textId = this.tree.textId(id);
 
-  if (!this.drawRect(start, stop, color)) {
+  if (!this.drawRect(start, stop, color, textId)) {
     this.futureDrawQueue[this.futureDrawQueue.length] = id
     return;
   }
@@ -107,7 +124,7 @@ DrawCanvas.prototype.drawItem = function(id) {
   }
 }
 
-DrawCanvas.prototype.drawRect = function(start, stop, color) {
+DrawCanvas.prototype.drawRect = function(start, stop, color, textId) {
   var x_start = start * this.conversion;
   var y_start = Math.floor(x_start / this.width) * this.line_height;
   x_start = x_start % this.width;
@@ -122,15 +139,18 @@ DrawCanvas.prototype.drawRect = function(start, stop, color) {
     if (x_stop - x_start < this.drawThreshold)
       return false;
 
-    this.ctx.fillRect(x_start, y_start, x_stop - x_start, this.line_height);
+    if (!this.hiddenList[textId])
+        this.ctx.fillRect(x_start, y_start, x_stop - x_start, this.line_height);
     return true;
   }
 
-  this.ctx.fillRect(x_start, y_start, this.width - x_start, this.line_height);
-  for (var i = y_start + this.line_height; i < y_stop; i += this.line_height) {
-    this.ctx.fillRect(0, i, this.width, this.line_height);
+  if (!this.hiddenList[textId]) {
+    this.ctx.fillRect(x_start, y_start, this.width - x_start, this.line_height);
+    for (var i = y_start + this.line_height; i < y_stop; i += this.line_height) {
+      this.ctx.fillRect(0, i, this.width, this.line_height);
+    }
+    this.ctx.fillRect(0, y_stop, x_stop, this.line_height);
   }
-  this.ctx.fillRect(0, y_stop, x_stop, this.line_height);
   return true;
 }
 
@@ -165,6 +185,8 @@ DrawCanvas.prototype.draw = function() {
   this.height = Math.floor(this.dom.height / this.line_height) * this.line_height;
   this.length_ = this.width * this.height / this.line_height;
   this.conversion = this.length_ / this.duration;
+
+  this.ctx.clearRect(0, 0, this.width, this.height);
 
   this.drawThreshold = 5
   this.drawQueue = this.tree.childs(0);
@@ -445,6 +467,7 @@ Page.prototype.computeOverview = function () {
     total += this.overview.engineOverview[i];
   }
 
+  var self = this;
   var colors = new TextToColor(this.textmap);
   for (var i in this.overview.engineOverview) {
       if (!(i in this.engineOverviewTable)) {
@@ -452,6 +475,25 @@ Page.prototype.computeOverview = function () {
           var row = overview.insertRow(overview.rows.length);
           var engineCell = row.insertCell(0);
           engineCell.innerHTML = "<span class='block' style='background-color:"+colors.getColor(i)+";'></span>"+i;
+          engineCell.onclick = (function(engineCell, name) {
+              return function() {
+                  // find textId
+                  for (var i = 0; i<self.textmap.length; i++) {
+                      if (self.textmap[i] == name) {
+                          if (self.canvas.isHidden(i)) {
+                            self.canvas.show(i);
+                            engineCell.className = "engineCell";
+                          } else {
+                            self.canvas.hide(i);
+                            engineCell.className = "engineCell disabled";
+                          }
+                          self.canvas.draw();
+                          return;
+                      }
+                  } 
+              }
+          })(engineCell, i)
+          engineCell.className = "engineCell";
           var timesCell = row.insertCell(1)
           var totalCell = row.insertCell(2)
           this.engineOverviewTable[i] = row;

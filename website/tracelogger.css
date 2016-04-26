@@ -74,3 +74,13 @@ tr.inactive td {
 .nav::before {
     content: " - ";
 }
+
+.engineCell {
+    cursor: pointer;
+}
+.engineCell.disabled {
+    color: grey;
+}
+.engineCell.disabled span {
+    visibility: hidden;
+}
