@@ -1,13 +1,16 @@
-Tracelogger
-===========
+Tracelogger graph
+=================
 
-Tracelogger is a tool in the javascript engine that can pinpoint which engine in firefox is used.
-To create a log file you need to recompile the js shell with __--enable-trace-logging__.
-Afterwards every execution of a file will result in the creation of a /tmp/tl-data.json file.
-This branch contains the python scripts to create a nice graph out of tracelogging files.
+Tracelogger is a tool in the SpiderMonkey JS engine that can make execution traces. This repository contains the tools a graph out of these traces. The tool is mostly used by JS engine engineers to pinpoint issues or to have a broad view of what is going in the engine.
 
-__Update__: since FF37 there is no need to recompile the shell or browser. You need to specify the environment variables:
+In order to get a trace and corresponding file output, one has to run the JS shell or browser with an environment variable:
 TLLOG=Default TLOPTIONS=EnableMainThread,EnableOffThread,EnableGraph
+
+This will create files in /tmp/ on linux and in the current directory on windows. The main file is tl-data.json, which contains a pointer to all extra files. Per thread there will be a "tl-dict.*.json", "tl-tree.*.json" and a "tl-event.*.json" file.
+
+Configuring what needs to be traces can be done by adjusting the TLLOG and TLOPTIONS environment variables. To get a list of every possible input you can put "help" in the environment variable.
+- TLLOG: This variable decides what gets traced. Default contains an default list of items to trace, but it is possible to trace other things. There are hooks that are not enabled by default to trace individual compilation passes or VM calls. Note: By enabling more, you will get more overhead and the files will get bigger.
+- TLOPTIONS: This variable decideds some global options. The JS engine has the notion of mainthread (that runs the JS code) and helper threads (offthread), which helps in GC, compilation, parsing ... It is possible to only log one or the other. The EnableGraph part is needed to create the graph output files from the traces in memory. Don't omit that.
 
 Tools V2
 ========
@@ -45,16 +48,3 @@ When you want to rename the files and don't want to adjust the names yourself an
 
 - Run python rename.py /tmp/tl-data.json /somepath/somename
 - This will move /tmp/tl-data.json to /somepath/somename.json and move all the data files while renaming the files to begin with somename
-
-Tools V1 (Deprecated)
-========
-
-To create a tracelogging graph when you obtained the log file:
-
-    python generate.py [-h] [-w WIDTH] [-n NAME] [-r REVISION] logfile [logfile ...] -o outfile
-    
-e.g.
-    python generate.py /tmp/tracelogging.log -o /tmp/test.html
-
-The outfile should contain the graph. Put style.css and basic.js in the same folder
-and you should be good to go.
