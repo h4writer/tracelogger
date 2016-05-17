@@ -79,6 +79,13 @@ function DrawCanvas(dom, tree) {
   this.drawThreshold = 1
 }
 
+DrawCanvas.prototype.convert = function(x, y) {
+    var tick = Math.floor(y / this.line_height) * this.width + x;
+    tick = tick / this.conversion;
+    tick += this.start;
+    return tick;
+}
+
 DrawCanvas.prototype.show = function(textId) {
     this.hiddenList[textId] = false;
 }
@@ -112,6 +119,10 @@ DrawCanvas.prototype.drawItem = function(id) {
   var stop = this.tree.stop(id) - this.start;
 
   // Decide if we need to draw now.
+  if (stop < 0)
+      return;
+  if (start > this.stop - this.start)
+      return;
   if ((stop - start) < this.drawThreshold / this.conversion) {
 
       // Too small to draw.
@@ -162,10 +173,7 @@ DrawCanvas.prototype.drawRect = function(start, stop, color, textId) {
 }
 
 DrawCanvas.prototype.backtraceAtPos = function (x, y) {
-  var tick = Math.floor(y / this.line_height) * this.width + x;
-  tick = tick / this.conversion;
-  tick += this.start;
-
+  var tick = this.convert(x, y);
   var id = 0;
   var bt = []
   var found = true;
@@ -407,25 +415,40 @@ Page.prototype.updateStartTime = function (drawCanvas) {
     this.canvas.updateStop(this.stop);
     this.canvas.reset();
     this.canvas.draw();
+    this.zoom.updateStart(this.start);
+    this.zoom.updateStop(this.stop);
+    this.zoom.reset();
+    this.zoom.draw();
   }
 }
 
 Page.prototype.initGraph = function() {
-  if (this.canvas)
+  if (this.canvas) {
       this.canvas.reset();
+      this.zoom.reset();
+  }
 
   var canvas = new DrawCanvas(document.getElementById("myCanvas"), this.tree);
-  this.updateStartTime(canvas);
-
   this.canvas = canvas;
+
+  this.createZoom();
+
+  this.canvas.dom.onclick = this.clickCanvas.bind(this);
+  this.zoom.dom.onmousedown = this.zoomStart.bind(this);
+  this.zoom.dom.onmouseup = this.zoomEnd.bind(this);
+  window.onmouseup = this.zoomFailed.bind(this);
+  this.zoom.dom.ondblclick = this.zoomOut.bind(this);
+
+  this.updateStartTime(canvas);
   this.resize();
   window.onresize = this.resize.bind(this);
-  this.canvas.dom.onclick = this.clickCanvas.bind(this);
 }
 
 Page.prototype.resize = function() {
   this.canvas.dom.width = (document.body.clientWidth - 350)
   this.canvas.draw();
+  this.zoom.dom.width = (document.body.clientWidth - 350)
+  this.zoom.draw();
 }
 
 Page.prototype.initOverview = function() {
@@ -507,12 +530,14 @@ Page.prototype.computeOverview = function () {
                       if (self.textmap[i] == name) {
                           if (self.canvas.isHidden(i)) {
                             self.canvas.show(i);
+                            self.zoom.show(i);
                             engineCell.className = "engineCell";
                           } else {
                             self.canvas.hide(i);
+                            self.zoom.hide(i);
                             engineCell.className = "engineCell disabled";
                           }
-                          self.canvas.draw();
+                          self.zoom.draw();
                           return;
                       }
                   } 
@@ -571,6 +596,80 @@ Page.prototype.computeOverview = function () {
     }
     this.scriptOverviewTable[script].cells[4].innerHTML = output;
   }
+}
+
+Page.prototype.createZoom = function() {
+    var canvas = document.createElement("canvas");
+    this.canvas.dom.parentNode.insertBefore(canvas, this.canvas.dom);
+
+    canvas.height = "50"
+    canvas.width = "750"
+
+    this.zoom = new DrawCanvas(canvas, this.canvas.tree);
+
+    this.zoom.line_height = 50;
+    this.zoom.dom.onclick = function() {
+        //TODO
+    }.bind(this)
+    this.zoom.dom.width = (document.body.clientWidth - 350)
+    this.zoom.draw();
+}
+
+Page.prototype.zoomStart = function(e) {
+    var posx = 0;
+    var posy = 0;
+    if (!e) var e = window.event;
+    if (e.offsetX || e.offsetY) {
+        posx = e.offsetX;
+        posy = e.offsetY;
+    }
+    else if (e.layerX || e.layerY) {
+        posx = e.layerX;
+        posy = e.layerY;
+    }
+
+    this.zooming = true;
+    this.zoomStart = this.zoom.convert(posx, 1);
+}
+
+Page.prototype.zoomEnd = function(e) {
+    var posx = 0;
+    var posy = 0;
+    if (!e) var e = window.event;
+    if (e.offsetX || e.offsetY) {
+        posx = e.offsetX;
+        posy = e.offsetY;
+    }
+    else if (e.layerX || e.layerY) {
+        posx = e.layerX;
+        posy = e.layerY;
+    }
+
+    if (this.zooming) {
+        this.zooming = false;
+        var zoomEnd = this.zoom.convert(posx, 1);
+        if (zoomEnd == this.zoomStart)
+            return;
+        if (zoomEnd > this.zoomStart) {
+            this.canvas.updateStart(this.zoomStart);
+            this.canvas.updateStop(zoomEnd);
+        } else {
+            this.canvas.updateStart(zoomEnd);
+            this.canvas.updateStop(this.zoomStart);
+        }
+        this.canvas.draw();
+    }
+}
+
+Page.prototype.zoomOut = function(e) {
+    this.zooming = false;
+    this.canvas.updateStart(this.tree.start(1));
+    this.canvas.updateStop(this.tree.stop(0));
+    this.canvas.draw();
+}
+
+Page.prototype.zoomFailed = function(e) {
+    this.zooming = false;
 }
 
 Page.prototype.clickCanvas = function(e) {
