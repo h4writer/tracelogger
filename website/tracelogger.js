@@ -60,6 +60,45 @@ function percent(double) {
   return Math.round(double*10000)/100;
 }
 
+function SelectionCanvas(dom, fromCanvas) {
+  this.dom = dom;
+  this.ctx = dom.getContext("2d");
+
+  this.fromCanvas = fromCanvas
+  this.selectionStart = fromCanvas.start;
+  this.selectionStop = fromCanvas.stop;
+  this.strokeSize = 5
+}
+
+SelectionCanvas.prototype.updateStart = function(start) {
+    this.selectionStart = start;
+}
+SelectionCanvas.prototype.updateStop = function(stop) {
+    this.selectionStop = stop;
+}
+SelectionCanvas.prototype.draw = function() {
+  this.start = this.fromCanvas.start;
+  this.stop = this.fromCanvas.stop;
+
+  this.width = this.dom.width;
+  this.height = this.dom.height;
+
+  this.conversion = this.width / (this.stop - this.start)
+
+  this.ctx.clearRect(0, 0, this.width, this.height);
+
+  var startx = (this.selectionStart - this.start) * this.conversion
+  var stopx = (this.selectionStop - this.start) * this.conversion
+  this.ctx.beginPath();
+  this.ctx.moveTo(0, this.height);
+  this.ctx.lineTo(startx, this.strokeSize);
+  this.ctx.lineTo(stopx, this.strokeSize);
+  this.ctx.lineTo(this.width, this.height);
+  this.ctx.stroke()
+
+  this.ctx.fillRect(startx, 0, stopx - startx, this.strokeSize);
+}
+
 function DrawCanvas(dom, tree) {
   this.dom = dom;
   this.ctx = dom.getContext("2d");
@@ -214,12 +253,10 @@ DrawCanvas.prototype.draw = function() {
 }
 
 DrawCanvas.prototype.drawQueue = function() {
-  var start = new Date();
   var min = Math.min(this.currentPos + 100000, this.currentQueue.length)
   for (var i=this.currentPos; i < min; i++) {
     this.drawItem(this.currentQueue[i])
   }
-  console.log(new Date() - start);
   this.currentPos = min
 
   if (this.currentPos < this.currentQueue.length) {
@@ -312,7 +349,7 @@ Page.prototype.initSettings = function() {
   this.settingspopup.id = "settingspopup"
   this.settingspopup.className = "popup"
   this.settingspopup.innerHTML =
-    "<h2>Settings</h2>" + 
+    "<h2>Settings</h2>" +
     "<p>Timings: <select><option "+(this.settings.relative?"":"selected")+">absolute</option><option "+(this.settings.relative?"selected":"")+">relative</option></select></p>"+
     "<p>Absolute unit: <input type='text' value='"+this.settings.absoluteunit+"' /> ops/unit</p>"+
     "<p><input type='button' value='close' /></p>"
@@ -435,6 +472,7 @@ Page.prototype.initGraph = function() {
 
   this.canvas.dom.onclick = this.clickCanvas.bind(this);
   this.zoom.dom.onmousedown = this.zoomStart.bind(this);
+  this.zoom.dom.onmousemove = this.zoomMove.bind(this);
   this.zoom.dom.onmouseup = this.zoomEnd.bind(this);
   window.onmouseup = this.zoomFailed.bind(this);
   this.zoom.dom.ondblclick = this.zoomOut.bind(this);
@@ -530,17 +568,17 @@ Page.prototype.computeOverview = function () {
                       if (self.textmap[i] == name) {
                           if (self.canvas.isHidden(i)) {
                             self.canvas.show(i);
-                            self.zoom.show(i);
+                            //self.zoom.show(i);
                             engineCell.className = "engineCell";
                           } else {
                             self.canvas.hide(i);
-                            self.zoom.hide(i);
+                            //self.zoom.hide(i);
                             engineCell.className = "engineCell disabled";
                           }
-                          self.zoom.draw();
+                          self.canvas.draw();
                           return;
                       }
-                  } 
+                  }
               }
           })(engineCell, i)
           engineCell.className = "engineCell";
@@ -608,11 +646,18 @@ Page.prototype.createZoom = function() {
     this.zoom = new DrawCanvas(canvas, this.canvas.tree);
 
     this.zoom.line_height = 50;
-    this.zoom.dom.onclick = function() {
-        //TODO
-    }.bind(this)
     this.zoom.dom.width = (document.body.clientWidth - 350)
     this.zoom.draw();
+
+    var canvas = document.createElement("canvas");
+    this.canvas.dom.parentNode.insertBefore(canvas, this.canvas.dom);
+
+    canvas.height = "25"
+    canvas.width = "750"
+
+    this.selection = new SelectionCanvas(canvas, this.zoom);
+    this.selection.dom.width = (document.body.clientWidth - 350)
+    this.selection.draw();
 }
 
 Page.prototype.zoomStart = function(e) {
@@ -632,6 +677,36 @@ Page.prototype.zoomStart = function(e) {
     this.zoomStart = this.zoom.convert(posx, 1);
 }
 
+Page.prototype.zoomMove = function(e) {
+    var posx = 0;
+    var posy = 0;
+    if (!e) var e = window.event;
+    if (e.offsetX || e.offsetY) {
+        posx = e.offsetX;
+        posy = e.offsetY;
+    }
+    else if (e.layerX || e.layerY) {
+        posx = e.layerX;
+        posy = e.layerY;
+    }
+
+    if (this.zooming) {
+        var zoomEnd = this.zoom.convert(posx, 1);
+        if (zoomEnd == this.zoomStart) {
+            this.selection.updateStart(this.zoom.convert(posx-10, 1));
+            this.selection.updateStop(this.zoom.convert(posx+10, 1));
+        } else if (zoomEnd > this.zoomStart) {
+            this.selection.updateStart(this.zoomStart);
+            this.selection.updateStop(zoomEnd);
+        } else {
+            this.selection.updateStart(zoomEnd);
+            this.selection.updateStop(this.zoomStart);
+        }
+        this.selection.draw()
+    }
+    return true;
+}
+
 Page.prototype.zoomEnd = function(e) {
     var posx = 0;
     var posy = 0;
@@ -648,9 +723,10 @@ Page.prototype.zoomEnd = function(e) {
     if (this.zooming) {
         this.zooming = false;
         var zoomEnd = this.zoom.convert(posx, 1);
-        if (zoomEnd == this.zoomStart)
-            return;
-        if (zoomEnd > this.zoomStart) {
+        if (zoomEnd == this.zoomStart) {
+            this.canvas.updateStart(this.zoom.convert(posx-10, 1));
+            this.canvas.updateStop(this.zoom.convert(posx+10, 1));
+        } else if (zoomEnd > this.zoomStart) {
             this.canvas.updateStart(this.zoomStart);
             this.canvas.updateStop(zoomEnd);
         } else {
@@ -659,6 +735,9 @@ Page.prototype.zoomEnd = function(e) {
         }
         this.canvas.draw();
     }
+    this.selection.updateStart(this.canvas.start)
+    this.selection.updateStop(this.canvas.stop)
+    this.selection.draw()
 }
 
 Page.prototype.zoomOut = function(e) {
@@ -666,10 +745,16 @@ Page.prototype.zoomOut = function(e) {
     this.canvas.updateStart(this.tree.start(1));
     this.canvas.updateStop(this.tree.stop(0));
     this.canvas.draw();
+    this.selection.updateStart(this.canvas.start)
+    this.selection.updateStop(this.canvas.stop)
+    this.selection.draw()
 }
 
 Page.prototype.zoomFailed = function(e) {
     this.zooming = false;
+    this.selection.updateStart(this.canvas.start)
+    this.selection.updateStop(this.canvas.stop)
+    this.selection.draw()
 }
 
 Page.prototype.clickCanvas = function(e) {
