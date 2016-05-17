@@ -110,14 +110,25 @@ DrawCanvas.prototype.updateStop = function(stop) {
 DrawCanvas.prototype.drawItem = function(id) {
   var start = this.tree.start(id) - this.start;
   var stop = this.tree.stop(id) - this.start;
-  var color = this.tree.color(id);
-  var textId = this.tree.textId(id);
 
-  if (!this.drawRect(start, stop, color, textId)) {
-    this.futureDrawQueue[this.futureDrawQueue.length] = id
-    return;
+  // Decide if we need to draw now.
+  if ((stop - start) < this.drawThreshold / this.conversion) {
+
+      // Too small to draw.
+      if ((stop - start) <= this.minDraw / this.conversion)
+          return;
+
+      // Draw in a later pass.
+      this.futureQueue[this.futureQueue.length] = id
+      return;
   }
 
+  // Draw
+  var color = this.tree.color(id);
+  var textId = this.tree.textId(id);
+  this.drawRect(start, stop, color, textId);
+
+  // Draw children.
   var childs = this.tree.childs(id);
   for (var i = 0; i < childs.length; i++) {
     this.drawItem(childs[i]);
@@ -136,12 +147,9 @@ DrawCanvas.prototype.drawRect = function(start, stop, color, textId) {
 
   this.ctx.fillStyle = color;
   if (y_start == y_stop) {
-    if (x_stop - x_start < this.drawThreshold)
-      return false;
-
     if (!this.hiddenList[textId])
         this.ctx.fillRect(x_start, y_start, x_stop - x_start, this.line_height);
-    return true;
+    return
   }
 
   if (!this.hiddenList[textId]) {
@@ -151,7 +159,6 @@ DrawCanvas.prototype.drawRect = function(start, stop, color, textId) {
     }
     this.ctx.fillRect(0, y_stop, x_stop, this.line_height);
   }
-  return true;
 }
 
 DrawCanvas.prototype.backtraceAtPos = function (x, y) {
@@ -188,29 +195,35 @@ DrawCanvas.prototype.draw = function() {
 
   this.ctx.clearRect(0, 0, this.width, this.height);
 
-  this.drawThreshold = 5
-  this.drawQueue = this.tree.childs(0);
-  this.futureDrawQueue = []
+  this.drawThreshold = this.length_
+  this.currentQueue = this.tree.childs(0);
+  this.currentPos = 0;
+  this.futureQueue = []
+  this.minDraw = 0.05
 
   clearTimeout(this.timer);
   this.timer = setTimeout(DrawCanvas.prototype.drawQueue.bind(this), 1);
 }
 
 DrawCanvas.prototype.drawQueue = function() {
-  var queue = this.drawQueue.splice(0,10000);
-  for (var i=0; i<queue.length; i++) {
-    this.drawItem(queue[i])
+  var start = new Date();
+  var min = Math.min(this.currentPos + 100000, this.currentQueue.length)
+  for (var i=this.currentPos; i < min; i++) {
+    this.drawItem(this.currentQueue[i])
   }
+  console.log(new Date() - start);
+  this.currentPos = min
 
-  if (this.drawQueue.length > 0) {
+  if (this.currentPos < this.currentQueue.length) {
     this.timer = setTimeout(DrawCanvas.prototype.drawQueue.bind(this), 1);
     return;
   }
 
-  if (this.futureDrawQueue.length > 0) {
-    this.drawQueue = this.futureDrawQueue;
-    this.futureDrawQueue = []
-    if (this.drawThreshold < 0.05)
+  if (this.futureQueue.length > 0) {
+    this.currentQueue = this.futureQueue;
+    this.currentPos = 0;
+    this.futureQueue = []
+    if (this.drawThreshold < this.minDraw)
       return;
     this.drawThreshold = this.drawThreshold / 2
     this.timer = setTimeout(DrawCanvas.prototype.drawQueue.bind(this), 1);
@@ -218,10 +231,18 @@ DrawCanvas.prototype.drawQueue = function() {
   }
 }
 
+DrawCanvas.prototype.halt = function() {
+    clearTimeout(this.timer);
+}
+DrawCanvas.prototype.proceed = function() {
+    clearTimeout(this.timer);
+    this.timer = setTimeout(DrawCanvas.prototype.drawQueue.bind(this), 1);
+}
+
 DrawCanvas.prototype.reset = function() {
   clearTimeout(this.timer);
   this.drawQueue = []
-  this.futureDrawQueue = []
+  this.futureQueue = []
 }
 
 function translateScript(script) {
@@ -250,6 +271,8 @@ Page.prototype.initPopup = function() {
   a.className = "nav";
   a.onclick = function() {
       this.popup.style.display = "block";
+      for (var i = 0; i < this.popupElement.length; i++)
+          this.popupElement[i].proceed();
   }.bind(this)
   document.body.insertBefore(a, document.getElementsByTagName("h1")[0].nextSibling);
 
@@ -332,6 +355,8 @@ Page.prototype.initPopupElement = function(data) {
             this.corrections = corrections;
           this.initGraph()
           this.initOverview()
+          for (var i = 0; i < this.popupElement.length; i++)
+              this.popupElement[i].halt();
       }.bind(this)
       drawCanvas.draw();
       this.popupElement[this.popupElement.length] = drawCanvas;
