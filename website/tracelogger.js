@@ -637,25 +637,35 @@ Page.prototype.computeOverview = function () {
 }
 
 Page.prototype.createZoom = function() {
-    var canvas = document.createElement("canvas");
-    this.canvas.dom.parentNode.insertBefore(canvas, this.canvas.dom);
+    var zoomdom;
+    if (this.zoom) {
+        zoomdom = this.zoom.dom;
+    } else {
+        zoomdom = document.createElement("canvas");
+        this.canvas.dom.parentNode.insertBefore(zoomdom, this.canvas.dom);
 
-    canvas.height = "50"
-    canvas.width = "750"
+        zoomdom.height = "50"
+        zoomdom.width = "750"
+    }
 
-    this.zoom = new DrawCanvas(canvas, this.canvas.tree);
+    this.zoom = new DrawCanvas(zoomdom, this.canvas.tree);
 
     this.zoom.line_height = 50;
     this.zoom.dom.width = (document.body.clientWidth - 350)
     this.zoom.draw();
 
-    var canvas = document.createElement("canvas");
-    this.canvas.dom.parentNode.insertBefore(canvas, this.canvas.dom);
+    var selectiondom;
+    if (this.selection) {
+        selectiondom = this.selection.dom;
+    } else {
+        selectiondom = document.createElement("canvas");
+        this.canvas.dom.parentNode.insertBefore(selectiondom, this.canvas.dom);
 
-    canvas.height = "25"
-    canvas.width = "750"
+        selectiondom.height = "25"
+        selectiondom.width = "750"
+    }
 
-    this.selection = new SelectionCanvas(canvas, this.zoom);
+    this.selection = new SelectionCanvas(selectiondom, this.zoom);
     this.selection.dom.width = (document.body.clientWidth - 350)
     this.selection.draw();
 }
@@ -782,6 +792,7 @@ Page.prototype.clickCanvas = function(e) {
     }
 
     document.getElementById("backtrace").innerHTML = output;
+    document.getElementById("backtrace").scrollTop = backtrace.length*40;
 }
 
 /*
