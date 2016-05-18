@@ -45,15 +45,22 @@ if (pos != -1) {
       url = 'tl-data.json';
 }
 
-request([url], function (answer) {
-  var json = answer[0];
-  var pos = json.indexOf("=");
-  json = json.substr(pos+1);
+function processMainFile(url) {
+  request([url], function (answer) {
+    var json = answer[0];
+    var pos = json.indexOf("=");
+    json = json.substr(pos+1);
 
-  var data = JSON.parse(json);
-  var page = new Page(data);
-  page.init()
-});
+    var data = JSON.parse(json);
+    if (typeof data == "string") {
+      processMainFile(data);
+    } else {
+      var page = new Page(data);
+      page.init()
+    }
+  });
+}
+processMainFile(url);
 
 
 function percent(double) {
