@@ -34,7 +34,7 @@ function request (files, callback) {
 }
 
 var url = GetUrlValue("data");
-if (/^\w+:\/\//.test(url))
+if (/^[\w\+\-\.]+:\/\//.test(url))
   throw new Error("Loading logs from absolute URLs is disallowed for security reasons.");
 
 var pos = url.lastIndexOf("/");
