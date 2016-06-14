@@ -1,6 +1,8 @@
 Tracelogger graph
 =================
 
+![Screenshot](screenshot.png)
+
 Tracelogger is a tool in the SpiderMonkey JS engine that can make execution traces. This repository contains the tools a graph out of these traces. The tool is mostly used by JS engine engineers to pinpoint issues or to have a broad view of what is going in the engine.
 
 In order to get a trace and corresponding file output, one has to run the JS shell or browser with an environment variable:
