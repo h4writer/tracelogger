@@ -18,7 +18,7 @@ Tools V2
 **1. Creating a tracelogging graph:**
 
 - Make a directory "tracelogging"
-- Download "tracelogger.js", "tracelogger.html", "tracelogger.css" and "engine.js" from tools_v2 and save it in that directory.
+- Download the content of the "website" folder and put it in the "tracelogging" folder
 - Copy all /tmp/tl-* files into that directory
 - Navigate with a browser to tracelogger.html?data=tl-data.json
 
