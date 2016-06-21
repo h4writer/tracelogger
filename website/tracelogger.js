@@ -10,9 +10,10 @@ function GetUrlValue(VarSearch){
             return KeyValuePair[1];
         }
     }
+    return "";
 }
 
-function request (files, callback) {
+function request (files, callback, error_cb) {
     var count = 0;
     var received = new Array(files.length);
 
@@ -29,39 +30,16 @@ function request (files, callback) {
                     callback(received);
             };
         })(i);
+        if (error_cb) {
+            xhr.onerror = (function (file) {
+                return function (data, textStatus, jqXHR) {
+                    error_cb(baseUrl + file);
+                };
+            })(files[i]);
+        }
         xhr.send();
     }
 }
-
-var url = GetUrlValue("data");
-if (/^\w+:\/\//.test(url))
-  throw new Error("Loading logs from absolute URLs is disallowed for security reasons.");
-
-var pos = url.lastIndexOf("/");
-if (pos != -1) {
-  baseUrl += url.substring(0, pos+1);
-  url = url.substring(pos+1);
-  if (url.length == 0)
-      url = 'tl-data.json';
-}
-
-function processMainFile(url) {
-  request([url], function (answer) {
-    var json = answer[0];
-    var pos = json.indexOf("=");
-    json = json.substr(pos+1);
-
-    var data = JSON.parse(json);
-    if (typeof data == "string") {
-      processMainFile(data);
-    } else {
-      var page = new Page(data);
-      page.init()
-    }
-  });
-}
-processMainFile(url);
-
 
 function percent(double) {
   return Math.round(double*10000)/100;
@@ -302,8 +280,7 @@ function translateScript(script) {
   return "<span title='"+script+"'>"+arr[arr.length-1]+"</span>";
 }
 
-function Page(data) {
-  this.data = data;
+function Page() {
   this.settings = {
     relative: true,
     absoluteunit: 10000
@@ -311,8 +288,93 @@ function Page(data) {
 }
 
 Page.prototype.init = function() {
-  this.initPopup()
-  this.initSettings()
+  var url = GetUrlValue("data");
+  if (/^\w+:\/\//.test(url))
+      throw new Error("Loading logs from absolute URLs is disallowed for security reasons.");
+
+  var pos = url.lastIndexOf("/");
+  if (pos != -1) {
+      baseUrl += url.substring(0, pos+1);
+      url = url.substring(pos+1);
+  }
+
+  if (url.length == 0) {
+      this.initFilesList()
+      return;
+  }
+
+  this.loadFile(url);
+}
+
+Page.prototype.loadFile = function(url) {
+  request([url], function (answer) {
+    var json = answer[0];
+    var pos = json.indexOf("=");
+    json = json.substr(pos+1);
+
+    try {
+    var data = JSON.parse(json);
+    } catch(e) {
+        alert("Failed to load: "+baseUrl+url);
+    }
+    if (typeof data == "string") {
+        this.loadFile(data);
+    } else {
+        this.data = data;
+        this.initPopup()
+        this.initSettings()
+    }
+ }.bind(this), function(file) {
+     alert("Failed to load: "+file);
+ });
+}
+
+Page.prototype.initFilesList = function() {
+  this.filelist = document.createElement("div");
+  this.filelist.className = "popup"
+  this.filelist.innerHTML = "<h2>File list</h2><p>Select the file you want to examine.</p>"
+
+  request(["/"], function (answer) {
+      answer += "";
+      if (/tl-data.json/.test(answer)) {
+          this.filelist.innerHTML += "- Most recent trace: ";
+          var div = document.createElement("div");
+          div.innerHTML += "<a href='#'>tl-data.json</a>";
+          div.onclick = function() {
+              this.loadFile("tl-data.json");
+              this.filelist.style.display = "none";
+          }.bind(this)
+
+          this.filelist.appendChild(div);
+          var br = document.createElement("br");
+          this.filelist.appendChild(br);
+          var div = document.createElement("div");
+          div.innerHTML += "- Older traces: ";
+          this.filelist.appendChild(div);
+      }
+
+      var logs = answer.match(/tl-data.[0-9]*.json/g);
+      for (var i=0; i<logs.length; i++) {
+          if (i>0 &&logs[i] == logs[i-1])
+              continue;
+          ( function(i) {
+              var div = document.createElement("div");
+              div.innerHTML += "<a href='#'>"+logs[i]+"</a>";
+              div.onclick = function() {
+                  this.loadFile(logs[i]);
+                  this.filelist.style.display = "none";
+              }.bind(this)
+
+              this.filelist.appendChild(div);
+          }.bind(this))(i)
+      }
+      var br = document.createElement("br");
+      this.filelist.appendChild(br);
+  }.bind(this), function(file) {
+      alert("Couldn't contact "+file+". Is the server running?");
+  });
+
+  document.body.appendChild(this.filelist);
 }
 
 Page.prototype.initPopup = function() {
@@ -801,6 +863,10 @@ Page.prototype.clickCanvas = function(e) {
     document.getElementById("backtrace").innerHTML = output;
     document.getElementById("backtrace").scrollTop = backtrace.length*40;
 }
+
+var page = new Page();
+page.init()
+
 
 /*
   SortTable

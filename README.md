@@ -21,10 +21,9 @@ Tools V2
 
 - Make a directory "tracelogging"
 - Download the content of the "website" folder and put it in the "tracelogging" folder
-- Copy all /tmp/tl-* files into that directory
-- Navigate with a browser to tracelogger.html?data=tl-data.json
-
-*Note: when you are doing this from "file:///" you will probably get a security warning in the console. This is because firefox doesn't allow loading files from the harddisk using httprequest, even when the file loading the file is on the harddisk. There are two solutions. One is to create a localhost server and serving the files there. The other being disable this check in "about:config", by temporarly switching "security.fileuri.strict_origin_policy" to false*
+- Copy the website/server.py file to the directory containing the trace files (/tmp on linux, the working directory in windows)
+- Run "python server.py" from that directory.
+- Navigate with a browser to "file:///PATH_TO/tracelogger.html"
 
 **2. reduce.py: Reducing a tracelogging graph:**
 
