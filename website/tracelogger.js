@@ -817,16 +817,24 @@ Page.prototype.zoomEnd = function(e) {
     this.selection.updateStart(this.canvas.start)
     this.selection.updateStop(this.canvas.stop)
     this.selection.draw()
+
+    this.tablesInited = false;
+    this.overview.setClip(this.canvas.start, this.canvas.stop);
 }
 
 Page.prototype.zoomOut = function(e) {
     this.zooming = false;
+
     this.canvas.updateStart(this.tree.start(1));
     this.canvas.updateStop(this.tree.stop(0));
     this.canvas.draw();
+
     this.selection.updateStart(this.canvas.start)
     this.selection.updateStop(this.canvas.stop)
     this.selection.draw()
+
+    this.tablesInited = false;
+    this.overview.setClip(this.canvas.start, this.canvas.stop);
 }
 
 Page.prototype.zoomFailed = function(e) {
