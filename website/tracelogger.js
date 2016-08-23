@@ -84,8 +84,9 @@ SelectionCanvas.prototype.draw = function() {
   this.ctx.fillRect(startx, 0, stopx - startx, this.strokeSize);
 }
 
-function DrawCanvas(dom, tree) {
+function DrawCanvas(dom, tree, name) {
   this.dom = dom;
+  this.name = name;
   this.ctx = dom.getContext("2d");
   this.tree = tree;
   this.line_height = 10;
@@ -196,6 +197,11 @@ DrawCanvas.prototype.drawRect = function(start, stop, color, textId) {
   }
 }
 
+DrawCanvas.prototype.drawName = function() {
+  if (this.name)
+    this.ctx.fillText(this.name, 10, 0);
+}
+
 DrawCanvas.prototype.backtraceAtPos = function (x, y) {
   var tick = this.convert(x, y);
   var id = 0;
@@ -258,6 +264,8 @@ DrawCanvas.prototype.drawQueue = function() {
     this.drawThreshold = this.drawThreshold / 2
     this.timer = setTimeout(DrawCanvas.prototype.drawQueue.bind(this), 1);
     return;
+  } else {
+    this.drawName();
   }
 }
 
