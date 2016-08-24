@@ -9,6 +9,8 @@ argparser.add_argument('js_file',
                        help='the js file to parse, or a directory containing tl-data.json')
 argparser.add_argument('new_name',
                        help='the new js file name (and/or path), without the .json')
+argparser.add_argument('--keep', action='store_true',
+                       help='do not remove the original files')
 args = argparser.parse_args()
 
 # Example:
@@ -35,30 +37,47 @@ redir_file = None
 if not isinstance(data, list):
     redir_file = jsfile
     print("Have redir file = " + redir_file)
-    jsfile = data
+    jsfile = os.path.join(dirname(jsfile), data)
+    import pdb; pdb.set_trace()
     with open(jsfile, "r") as fp:
         data = json.load(fp)
 
-# The new name is assumed to be in the jsfile's directory, unless it is given
-# as a directory itself, in which case it will be placed in the given directory
-# under the basename of the jsfile.
-if os.path.isdir(args.new_name):
+# args.new_name is ambiguous. If it is given as a path foo/bar, then it is
+# assumed to be a new directory foo/ (underneath cwd) with files named
+# bar.json. If it is a single component (no slashes), then it is treated
+# as a directory if it exists, otherwise it is a name within the source
+# directory.
+if '/' in args.new_name:
+    new_name = args.new_name
+    if basename(new_name) == '':  # foo/bar/
+        new_name = os.path.join(new_name, basename(jsfile))
+elif os.path.isdir(args.new_name):
     new_name = os.path.join(args.new_name, basename(jsfile))
-    new_name, _ = os.path.splitext(new_name)
 else:
-    new_name = os.path.join(datapwd, args.new_name)
+    new_name = os.path.join(dirname(jsfile), new_name)
+
+# Strip off the .json if we inherited one from the source.
+new_name, _ = os.path.splitext(new_name)
+
+# Create the output directory if needed.
+try:
+    os.makedirs(dirname(new_name))
+except OSError:
+    pass
+
+action = shutil.copy if args.keep else shutil.move
 
 for j in range(len(data)):
     tree = new_name+".tree."+str(j)+".tl"
-    shutil.move(datapwd+"/"+data[j]["tree"], tree)
+    action(datapwd+"/"+data[j]["tree"], tree)
     data[j]["tree"] = basename(tree)
 
     events = new_name+".event."+str(j)+".tl"
-    shutil.move(datapwd+"/"+data[j]["events"], events)
+    action(datapwd+"/"+data[j]["events"], events)
     data[j]["events"] = basename(events)
 
     ndict = new_name+".dict."+str(j)+".json"
-    shutil.move(datapwd+"/"+data[j]["dict"], ndict)
+    action(datapwd+"/"+data[j]["dict"], ndict)
     data[j]["dict"] = basename(ndict)
 
 # Create new jsfile
@@ -73,7 +92,9 @@ if redir_file:
     print("Writing " + new_redir_file)
     with open(new_redir_file, "w") as fp:
         fp.write("\"%s.json\"" % basename(new_name))
-    os.remove(redir_file)
+    if not args.keep:
+        os.remove(redir_file)
 
 # If everything went ok, remove the original.
-os.remove(jsfile)
+if not args.keep:
+    os.remove(jsfile)
