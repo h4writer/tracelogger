@@ -439,6 +439,7 @@ Page.prototype.initSettings = function() {
 }
 
 Page.prototype.initPopupElement = function(data) {
+    var container = document.createElement("div");
     var canvas = document.createElement("canvas");
 
     var pages = [];
@@ -457,6 +458,12 @@ Page.prototype.initPopupElement = function(data) {
       if (!tree.hasChilds(0)) {
           canvas.style.display = "none";
           return;
+      } else {
+          if (data.threadName) {
+              var name = document.createElement("div");
+              name.innerHTML = data.threadName + ":";
+              container.insertBefore(name, canvas);
+          }
       }
       var drawCanvas = new DrawCanvas(canvas, tree);
       this.updateStartTime(drawCanvas);
@@ -479,7 +486,8 @@ Page.prototype.initPopupElement = function(data) {
     canvas.height = "50"
     canvas.width = "750"
 
-    return canvas;
+    container.appendChild(canvas);
+    return container;
 }
 
 Page.prototype.updateStartTime = function (drawCanvas) {
