@@ -63,7 +63,7 @@ def updateDisplay():
             "-f", pwd+"/navigate.js"
         ]
         env = os.environ
-        env['TLLOG'] = ''
+        env['TLOPTIONS'] = ''
         lines = subprocess.check_output(overview, shell=False, env=env)
         lines = lines.split("\n")
         display = display + lines
