@@ -54,7 +54,7 @@ if '/' in args.new_name:
 elif os.path.isdir(args.new_name):
     new_name = os.path.join(args.new_name, basename(jsfile))
 else:
-    new_name = os.path.join(dirname(jsfile), new_name)
+    new_name = os.path.join(dirname(jsfile), args.new_name)
 
 # Strip off the .json if we inherited one from the source.
 new_name, _ = os.path.splitext(new_name)
