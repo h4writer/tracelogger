@@ -11,18 +11,20 @@ argparser.add_argument('js_shell', help='a js shell environment')
 argparser.add_argument('js_file', help='the js file to parse')
 args = argparser.parse_args()
 
-shell = args.js_shell;
-jsfile = args.js_file;
-if jsfile[0] != "/":
-    jsfile = os.getcwd() + "/" + jsfile;
+shell = args.js_shell
+jsfile = os.path.abspath(args.js_file)
 
 pwd = os.path.dirname(os.path.realpath(__file__))
 datapwd = os.path.dirname(jsfile)
 
 # Get the data information
-fp = open(jsfile, "r")
-data = json.load(fp)
-fp.close()
+with open(jsfile, "r") as fp:
+    data = json.load(fp)
+
+# Handle tl-data.json redirect files
+if not isinstance(data, list):
+    with open(data, "r") as fp:
+        data = json.load(fp)
 
 
 import sys,tty,termios
@@ -51,13 +53,18 @@ def updateDisplay():
     global opened, display
     display = []
     if len(opened) == 0:
-        for i in range(len(data)):
-            display.append(data[i]["tree"])
+        display.extend([d["tree"] for d in data])
     else:
         display.append(data[opened[0]]["tree"])
 
-        overview = shell+" -e 'var data = "+json.dumps(data[opened[0]])+";var opened = "+json.dumps(opened[1:])+"' -f "+pwd+"/navigate.js"
-        lines = subprocess.check_output(overview, shell=True)
+        overview = [
+            shell,
+            "-e", "var data = "+json.dumps(data[opened[0]])+";var opened = "+json.dumps(opened[1:]),
+            "-f", pwd+"/navigate.js"
+        ]
+        env = os.environ
+        env['TLOPTIONS'] = ''
+        lines = subprocess.check_output(overview, shell=False, env=env)
         lines = lines.split("\n")
         display = display + lines
 
@@ -87,6 +94,12 @@ display = []
 choice = "a"
 updateDisplay()
 
+KEY_UP = '[A'
+KEY_DOWN = '[B'
+KEY_PGDN = '[6'
+KEY_PGUP = '[5'
+KEY_ENTER = chr(13)
+
 while 1:
     clearscreen()
     makeDisplay()
@@ -97,28 +110,28 @@ while 1:
         exit()
     if choice == '\x1b':
         choice = getkey()+getkey()
-        if choice == '[A': # up
+        if choice == KEY_UP:
             if selected != 0:
                 selected -= 1
-        if choice == '[B': # down
+        if choice == KEY_DOWN:
             if selected + 1 != line:
                 selected += 1
-        if choice == '[6': # PgDn
+        if choice == KEY_PGDN:
             if selected + 10 < line:
                 selected += 10
             else:
                 selected = line - 1;
-        if choice == '[5': # PgUp
+        if choice == KEY_PGUP:
             if selected - 10 > 0:
                 selected -= 10
             else:
                 selected = 0;
-    if choice == chr(13): # enter
+    if choice == KEY_ENTER:
         if selected < len(opened):
             opened = opened[:selected]
             selected = len(opened)
             updateDisplay()
         else:
             opened.append(selected - len(opened))
-            selected = len(opened) - 1 
+            selected = len(opened) - 1
             updateDisplay()

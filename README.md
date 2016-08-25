@@ -39,7 +39,7 @@ Note: using 'pypy' instead of 'python' will sometimes not work. Some pypy versio
 
 When you don't want an high level overview, but want to navigate the raw data of the logfiles. Navigate the files using arrow keys and enter to view the content inside the tree item.
 
-- Make sure you have a normal JS shell ($JS) which doesn't have tracelogging enabled
+- Make sure you have a JS shell named $JS
 - Download the full "tools_v2" directory
 - Run 'python navigate.py $JS /tmp/tl-data.json'
 
