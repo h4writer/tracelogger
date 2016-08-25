@@ -279,7 +279,11 @@ Overview.prototype.init = function() {
       wor.postMessage({type: "overview",
                        buffer:this.tree.buffer,
                        textmap:this.tree.textmap,
-                       settings:this.settings});
+                       settings:this.settings,
+                       engineOverview: this.engineOverview,
+                       engineAmount: this.engineAmount,
+                       scriptOverview: this.scriptOverview,
+                       scriptTimes: this.scriptTimes});
       this.settings.chunk_cb = chunk_cb;
   }
 }
@@ -297,6 +301,10 @@ if (enableWorker && worker) {
                 });
             }
             overview = new Overview(new DataTree(e.data.buffer, e.data.textmap), e.data.settings);
+            overview.engineOverview = e.data.engineOverview;
+            overview.engineAmount = e.data.engineAmount;
+            overview.scriptOverview = e.data.scriptOverview;
+            overview.scriptTimes = e.data.scriptTimes;
             overview.init();
         }
     });
