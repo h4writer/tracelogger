@@ -1,3 +1,5 @@
+var enableWorker = true;
+
 // Test if in worker
 var worker = (typeof importScripts === 'function');
 
@@ -259,7 +261,7 @@ function Overview(tree, settings) {
 }
 
 Overview.prototype.init = function() {
-  if (worker) {
+  if (!enableWorker || worker) {
     this.processQueue();
   } else {
       var chunk_cb = this.settings.chunk_cb;
@@ -282,7 +284,7 @@ Overview.prototype.init = function() {
   }
 }
 
-if (worker) {
+if (enableWorker && worker) {
     addEventListener('message', function(e) {
         if (e.data.type == "overview") {
             var overview;
@@ -375,7 +377,7 @@ Overview.prototype.processTreeItem = function(script, id) {
     this.engineAmount[info]++;
   }
 
-  if (script != "") {
+  if (script != "" && info != "Internal") {
     if (!this.scriptTimes[script])
         this.scriptTimes[script] = {};
     if (!this.scriptTimes[script][info])
