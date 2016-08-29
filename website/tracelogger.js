@@ -84,7 +84,7 @@ SelectionCanvas.prototype.draw = function() {
   this.ctx.fillRect(startx, 0, stopx - startx, this.strokeSize);
 }
 
-function DrawCanvas(dom, tree) {
+function DrawCanvas(dom, tree, options) {
   this.dom = dom;
   this.ctx = dom.getContext("2d");
   this.tree = tree;
@@ -93,6 +93,10 @@ function DrawCanvas(dom, tree) {
   this.stop = this.tree.stop(0);
   this.duration = this.stop - this.start;
   this.hiddenList = [];
+  this.minDraw = 0.05;
+
+  if (options && options.minDraw)
+      this.minDraw = options.minDraw
 
   for(var i=0; i<this.tree.textmap.length; i++) {
       if (this.tree.colors.getColor(this.tree.textmap[i]) == "white")
@@ -231,7 +235,6 @@ DrawCanvas.prototype.draw = function() {
   this.currentQueue = this.tree.childs(0);
   this.currentPos = 0;
   this.futureQueue = []
-  this.minDraw = 0.05
 
   clearTimeout(this.timer);
   this.timer = setTimeout(DrawCanvas.prototype.drawQueue.bind(this), 1);
@@ -283,7 +286,8 @@ function translateScript(script) {
 function Page() {
   this.settings = {
     relative: true,
-    absoluteunit: 10000
+    absoluteunit: 10000,
+    drawcutoff: 0.05
   }
 }
 
@@ -421,6 +425,7 @@ Page.prototype.initSettings = function() {
     "<h2>Settings</h2>" +
     "<p>Timings: <select><option "+(this.settings.relative?"":"selected")+">absolute</option><option "+(this.settings.relative?"selected":"")+">relative</option></select></p>"+
     "<p>Absolute unit: <input type='text' value='"+this.settings.absoluteunit+"' /> ops/unit</p>"+
+    "<p>Min draw size for graph: <input type='text' value='"+this.settings.drawcutoff+"' /> px</p>"+
     "<p><input type='button' value='close' /></p>"
   document.body.appendChild(this.settingspopup);
 
@@ -431,9 +436,15 @@ Page.prototype.initSettings = function() {
   this.settingspopup.getElementsByTagName("input")[0].onchange = function() {
       settings.absoluteunit = this.value
   }
-  this.settingspopup.getElementsByTagName("input")[1].onclick = function() {
+  this.settingspopup.getElementsByTagName("input")[1].onchange = function() {
+      settings.drawcutoff = this.value
+  }
+  this.settingspopup.getElementsByTagName("input")[2].onclick = function() {
       this.settingspopup.style.display = "none";
       this.computeOverview();
+      if (this.zoom) this.zoom.minDraw = settings.drawcutoff;
+      if (this.canvas) this.canvas.minDraw = settings.drawcutoff;
+      this.resize();
   }.bind(this)
 
 }
@@ -465,7 +476,9 @@ Page.prototype.initPopupElement = function(data) {
               container.insertBefore(name, canvas);
           }
       }
-      var drawCanvas = new DrawCanvas(canvas, tree);
+      var drawCanvas = new DrawCanvas(canvas, tree,  {
+          minDraw: this.settings.drawcutoff
+      });
       this.updateStartTime(drawCanvas);
       drawCanvas.line_height = 50;
       drawCanvas.dom.onclick = function() {
@@ -542,7 +555,9 @@ Page.prototype.initGraph = function() {
       this.zoom.reset();
   }
 
-  var canvas = new DrawCanvas(document.getElementById("myCanvas"), this.tree);
+  var canvas = new DrawCanvas(document.getElementById("myCanvas"), this.tree, {
+      minDraw: this.settings.drawcutoff
+  });
   this.canvas = canvas;
 
   this.createZoom();
@@ -726,7 +741,9 @@ Page.prototype.createZoom = function() {
         zoomdom.width = "750"
     }
 
-    this.zoom = new DrawCanvas(zoomdom, this.canvas.tree);
+    this.zoom = new DrawCanvas(zoomdom, this.canvas.tree, {
+        minDraw: this.settings.drawcutoff
+    });
 
     this.zoom.line_height = 50;
     this.zoom.dom.width = (document.body.clientWidth - 350)
