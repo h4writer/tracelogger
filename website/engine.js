@@ -109,13 +109,13 @@ DataTree.prototype.head = function() {
 DataTree.prototype.start = function(id) {
   var p1 = this.view.getUint32(id * this.itemSize);
   var p2 = this.view.getUint32(id * this.itemSize + 4);
-  return p1*4294967295+p2
+  return p1*4294967296+p2
 }
 
 DataTree.prototype.stop = function(id) {
   var p1 = this.view.getUint32(id * this.itemSize + 8);
   var p2 = this.view.getUint32(id * this.itemSize + 12);
-  var stop = p1*4294967295+p2
+  var stop = p1*4294967296+p2
   if (stop == 0)
       return this.stop(this.childs(id)[this.childs(id).length - 1]);
   return stop;
@@ -205,16 +205,16 @@ CreateDataTree.prototype.addChild = function(parent, start, stop, textId) {
 }
 
 CreateDataTree.prototype._writeStart = function(id, start) {
-  var p1 = start / 4294967295;
-  var p2 = start % 4294967295;
+  var p1 = start / 4294967296;
+  var p2 = start % 4294967296;
 
   this.tree.view.setUint32(id * this.tree.itemSize, p1);
   this.tree.view.setUint32(id * this.tree.itemSize + 4, p2);
 }
 
 CreateDataTree.prototype._writeStop = function(id, stop) {
-  var p1 = stop / 4294967295;
-  var p2 = stop % 4294967295;
+  var p1 = stop / 4294967296;
+  var p2 = stop % 4294967296;
 
   this.tree.view.setUint32(id * this.tree.itemSize + 8, p1);
   this.tree.view.setUint32(id * this.tree.itemSize + 12, p2);
