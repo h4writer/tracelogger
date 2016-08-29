@@ -56,11 +56,11 @@ class TreeReader(object):
         self.fp.write(s)
 
     def _getStop(self, item):
-        if item.stop is not 0:
+        if item.stop != 0:
             return item.stop
 
         # If there are no children. Still use parentItem.stop
-        if item.children is 0:
+        if item.children == 0:
             return item.stop
 
         # The parent item doesn't contain the stop information.
@@ -71,6 +71,7 @@ class TreeReader(object):
             if child.nextId is 0:
                 return self._getStop(child)
             childId = child.nextId
+        return self._getStop(self.readItem(childId))
 
     def getStop(self):
         parentItem = self.readItem(0)
@@ -103,6 +104,7 @@ class Overview:
         self.tree = tree
         self.dic = dic
         self.engineOverview = {}
+        self.engineAmount = {}
         self.scriptOverview = {}
         self.scriptTimes = {}
 
@@ -142,20 +144,23 @@ class Overview:
         if time > 0 and not self.isScriptInfo(info):
             if info not in self.engineOverview:
                 self.engineOverview[info] = 0
+            if info not in self.engineAmount:
+                self.engineAmount[info] = 0
             self.engineOverview[info] += time
+            self.engineAmount[info] += 1
 
-        if script is not "":
+        if script != "" and info != "Internal":
             if script not in self.scriptTimes:
                 self.scriptTimes[script] = {}
             if info not in self.scriptTimes[script]:
                 self.scriptTimes[script][info] = 0;
             self.scriptTimes[script][info] += 1;
 
-        if script not in self.scriptOverview:
-            self.scriptOverview[script] = {}
-        if info not in self.scriptOverview[script]:
-            self.scriptOverview[script][info] = 0
-        self.scriptOverview[script][info] += time;
+            if script not in self.scriptOverview:
+                self.scriptOverview[script] = {}
+            if info not in self.scriptOverview[script]:
+                self.scriptOverview[script][info] = 0
+            self.scriptOverview[script][info] += time;
 
 def visitItem(oldTree, newTree, parent, oldItem):
     if oldItem.stop - oldItem.start >= threshold or oldItem.stop == 0:
@@ -206,6 +211,7 @@ for j in range(len(data)):
 
         correction = {
           "engineOverview": {},
+          "engineAmount": {},
           "scriptTimes": {},
           "scriptOverview": {}
         }
@@ -213,6 +219,10 @@ for j in range(len(data)):
           correction["engineOverview"][i] = fullOverview.engineOverview[i]
           if i in partOverview.engineOverview:
             correction["engineOverview"][i] -= partOverview.engineOverview[i]
+        for i in fullOverview.engineAmount:
+          correction["engineAmount"][i] = fullOverview.engineAmount[i]
+          if i in partOverview.engineAmount:
+            correction["engineAmount"][i] -= partOverview.engineAmount[i]
         for script in fullOverview.scriptTimes:
           correction["scriptTimes"][script] = {}
           for part in fullOverview.scriptTimes[script]:

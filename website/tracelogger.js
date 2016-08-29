@@ -576,6 +576,7 @@ Page.prototype.initOverview = function() {
 
   if (this.corrections) {
     this.overview.engineOverview = this.corrections.engineOverview;
+    this.overview.engineAmount = this.corrections.engineAmount;
     this.overview.scriptOverview = this.corrections.scriptOverview;
     this.overview.scriptTimes = this.corrections.scriptTimes;
   }
