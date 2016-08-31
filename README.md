@@ -19,11 +19,9 @@ Tools V2
 
 **1. Creating a tracelogging graph:**
 
-- Make a directory "tracelogging"
-- Download the content of the "website" folder and put it in the "tracelogging" folder
-- Copy the website/server.py file to the directory containing the trace files (/tmp on linux, the working directory in windows)
-- Run "python server.py" from that directory.
-- Navigate with a browser to "file:///PATH_TO/tracelogger.html"
+- Checkout the tracelogger repo, or download just the content of the "website" folder
+- Run "python <path-to-website-dir>/server.py"
+- Navigate with a browser to "http://localhost:8000/tracelogger.html"
 
 **2. reduce.py: Reducing a tracelogging graph:**
 
