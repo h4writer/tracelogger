@@ -236,20 +236,20 @@ for j in range(len(data)):
             if script in partOverview.scriptOverview and part in partOverview.scriptOverview[script]:
               correction["scriptOverview"][script][part] -= partOverview.scriptOverview[script][part]
 
-        corrFile = open(output+'.corrections.'+str(j)+'.js', 'wb')
+        corrFile = open(output+'.corrections.'+str(j)+'.json', 'wb')
         json.dump(correction, corrFile)
         corrFile.close()
     
     print "copy textmap"
-    shutil.copyfile(datapwd+"/"+data[j]["dict"], output+".dict."+str(j)+".js")
+    shutil.copyfile(datapwd+"/"+data[j]["dict"], output+".dict."+str(j)+".json")
 
     ndata.append({
         "tree": os.path.basename(output)+'.tree.'+str(j)+'.tl',
-        "dict": os.path.basename(output)+'.dict.'+str(j)+'.js'
+        "dict": os.path.basename(output)+'.dict.'+str(j)+'.json'
     })
 
     if corrections:
-        ndata[-1]["corrections"] = os.path.basename(output)+'.corrections.'+str(j)+'.js'
+        ndata[-1]["corrections"] = os.path.basename(output)+'.corrections.'+str(j)+'.json'
 
 print "writing js file"
 
