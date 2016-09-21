@@ -13,9 +13,16 @@ jsfile = os.path.abspath(args.js_file);
 pwd = os.path.dirname(os.path.realpath(__file__))
 datapwd = os.path.dirname(jsfile)
 
+os.chdir(datapwd)
+
 # Get the data information
 with open(jsfile, "r") as fp:
     data = json.load(fp)
+
+# Handle tl-data.json redirect files
+if not isinstance(data, list):
+    with open(data, "r") as fp:
+        data = json.load(fp)
 
 # Guess the mainthread for which we want to generate an overview
 # We guess by taking the entry which has the largest tree.
@@ -30,7 +37,7 @@ for entry in data:
 overview = [
     args.js_shell,
     "-e",
-    "var data = " + json.dumps(entry),
+    "var data = " + json.dumps(mainEntry),
     "-f",
     pwd+"/overview.js"
 ]
