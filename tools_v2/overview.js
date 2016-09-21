@@ -18,4 +18,4 @@ print(JSON.stringify({
     engineAmount: fullOverview.engineAmount,
     scriptOverview: fullOverview.scriptOverview,
     scriptTimes: fullOverview.scriptTimes
-}));
+}, null, 4));
