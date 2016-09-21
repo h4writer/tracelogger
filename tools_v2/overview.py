@@ -1,8 +1,6 @@
 import argparse
 import subprocess
-import struct
 import json
-import shutil
 import os
 
 argparser = argparse.ArgumentParser(description='Returns an overview of the mainthread.')
@@ -10,28 +8,30 @@ argparser.add_argument('js_shell', help='a js shell environment')
 argparser.add_argument('js_file', help='the js file to parse')
 args = argparser.parse_args()
 
-shell = args.js_shell;
-jsfile = args.js_file;
-if jsfile[0] != "/":
-    jsfile = os.getcwd() + "/" + jsfile;
+jsfile = os.path.abspath(args.js_file);
 
 pwd = os.path.dirname(os.path.realpath(__file__))
 datapwd = os.path.dirname(jsfile)
 
 # Get the data information
-fp = open(jsfile, "r")
-data = json.load(fp)
-fp.close()
+with open(jsfile, "r") as fp:
+    data = json.load(fp)
 
 # Guess the mainthread for which we want to generate an overview
 # We guess by taking the entry which has the largest tree.
 max_size = 0
-entry = 0
-for j in range(len(data)):
-    statinfo = os.stat(datapwd + "/" + data[j]["tree"])
+mainEntry = None
+for entry in data:
+    statinfo = os.stat(datapwd + "/" + entry["tree"])
     if statinfo.st_size > max_size:
         max_size = statinfo.st_size
-        entry = j
+        mainEntry = entry
 
-overview = shell+" -e 'var data = "+json.dumps(data[entry])+"' -f "+pwd+"/overview.js"
-print subprocess.check_output(overview, shell=True)
+overview = [
+    args.js_shell,
+    "-e",
+    "var data = " + json.dumps(entry),
+    "-f",
+    pwd+"/overview.js"
+]
+subprocess.call(overview)
