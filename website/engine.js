@@ -1,4 +1,4 @@
-var enableWorker = true;
+var enableWorker = (typeof Worker !== 'undefined');
 
 // Test if in worker
 var worker = (typeof importScripts === 'function');

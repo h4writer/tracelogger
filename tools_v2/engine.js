@@ -1,3 +1,5 @@
+var enableWorker = (typeof Worker !== 'undefined');
+
 // Test if in worker
 var worker = (typeof importScripts === 'function');
 
@@ -259,7 +261,7 @@ function Overview(tree, settings) {
 }
 
 Overview.prototype.init = function() {
-  if (worker) {
+  if (!enableWorker || worker) {
     this.processQueue();
   } else {
       var chunk_cb = this.settings.chunk_cb;
@@ -277,12 +279,16 @@ Overview.prototype.init = function() {
       wor.postMessage({type: "overview",
                        buffer:this.tree.buffer,
                        textmap:this.tree.textmap,
-                       settings:this.settings});
+                       settings:this.settings,
+                       engineOverview: this.engineOverview,
+                       engineAmount: this.engineAmount,
+                       scriptOverview: this.scriptOverview,
+                       scriptTimes: this.scriptTimes});
       this.settings.chunk_cb = chunk_cb;
   }
 }
 
-if (worker) {
+if (enableWorker && worker) {
     addEventListener('message', function(e) {
         if (e.data.type == "overview") {
             var overview;
@@ -295,6 +301,10 @@ if (worker) {
                 });
             }
             overview = new Overview(new DataTree(e.data.buffer, e.data.textmap), e.data.settings);
+            overview.engineOverview = e.data.engineOverview;
+            overview.engineAmount = e.data.engineAmount;
+            overview.scriptOverview = e.data.scriptOverview;
+            overview.scriptTimes = e.data.scriptTimes;
             overview.init();
         }
     });
@@ -375,7 +385,7 @@ Overview.prototype.processTreeItem = function(script, id) {
     this.engineAmount[info]++;
   }
 
-  if (script != "") {
+  if (script != "" && info != "Internal") {
     if (!this.scriptTimes[script])
         this.scriptTimes[script] = {};
     if (!this.scriptTimes[script][info])
