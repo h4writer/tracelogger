@@ -84,11 +84,6 @@ for j in range(len(data)):
         action(datapwd+"/"+data[j]["corrections"], corrections)
         data[j]["corrections"] = basename(corrections)
 
-# Create new jsfile
-with open(new_name+".json", "w") as fp:
-    json.dump(data, fp)
-print("Wrote %s.json" % new_name)
-
 # Recreate the redirection file in the destination directory, if we used a
 # redirection file in the first place.
 if redir_file:
@@ -102,3 +97,8 @@ if redir_file:
 # If everything went ok, remove the original.
 if not args.keep:
     os.remove(jsfile)
+
+# Create new jsfile
+with open(new_name+".json", "w") as fp:
+    json.dump(data, fp)
+print("Wrote %s.json" % new_name)

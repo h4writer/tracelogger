@@ -97,3 +97,34 @@ assertExists(DIR, "test2.event.0.tl")
 assertExists(DIR, "test2.tree.1.tl")
 assertExists(DIR, "test2.dict.1.json")
 assertExists(DIR, "test2.event.1.tl")
+
+####################################################################################"
+clearDir(DIR)
+createDir(DIR)
+createFiles(DIR, "test")
+createForwardFile(DIR, "tl-data.json", "test.json")
+
+call(["python", "../tools_v2/rename.py", os.path.join(DIR, "tl-data.json"), os.path.join(DIR, "tl-data.json")])
+
+assertExists(DIR, "tl-data.json")
+assertExists(DIR, "tl-data.tree.0.tl")
+assertExists(DIR, "tl-data.dict.0.json")
+assertExists(DIR, "tl-data.event.0.tl")
+assertExists(DIR, "tl-data.tree.1.tl")
+assertExists(DIR, "tl-data.dict.1.json")
+assertExists(DIR, "tl-data.event.1.tl")
+
+####################################################################################"
+clearDir(DIR)
+createDir(DIR)
+createFiles(DIR, "tl-data")
+
+call(["python", "../tools_v2/rename.py", os.path.join(DIR, "tl-data.json"), os.path.join(DIR, "tl-data.json")])
+
+assertExists(DIR, "tl-data.json")
+assertExists(DIR, "tl-data.tree.0.tl")
+assertExists(DIR, "tl-data.dict.0.json")
+assertExists(DIR, "tl-data.event.0.tl")
+assertExists(DIR, "tl-data.tree.1.tl")
+assertExists(DIR, "tl-data.dict.1.json")
+assertExists(DIR, "tl-data.event.1.tl")
