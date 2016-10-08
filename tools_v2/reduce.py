@@ -9,6 +9,7 @@ argparser = argparse.ArgumentParser(description='Reduce the logfile to make suit
 argparser.add_argument('js_file', help='the js file to parse')
 argparser.add_argument('output_name', help='the name of the output (without the .js)')
 argparser.add_argument('--no-corrections', action='store_false', dest='corrections', help='don\'t compute the corrections files')
+argparser.add_argument('--threshold', default=0.1, help='prune anything that would be fewer than THRESHOLD pixels on a 1600x400 pixel canvas')
 
 args = argparser.parse_args()
 
@@ -50,23 +51,28 @@ class TreeReader(object):
 
         self.fp.write(s)
 
-    def _getStop(self, item):
-        if item.stop != 0:
-            return item.stop
+    def childGenerator(self, item):
+        if item.children:
+            child = self.readItem(item.id + 1)
+            while child:
+                yield child
+                child = self.readItem(child.nextId) if child.nextId else None
 
-        # If there are no children. Still use parentItem.stop
-        if item.children == 0:
+    def _getStop(self, item):
+        # When there is a stop time set, use that. Finished.
+        if item.stop != 0:
             return item.stop
 
         # The parent item doesn't contain the stop information.
         # Get the last tree item for the stop information.
-        childId = item.id + 1
-        while True:
-            child = self.readItem(childId)
-            if child.nextId == 0:
-                return self._getStop(child)
-            childId = child.nextId
-        return self._getStop(self.readItem(childId))
+        children = list(self.childGenerator(item))
+
+        # If there are no children. Still use parentItem.stop
+        if not children:
+            return item.stop
+
+        # Get the last item stop time.
+        return self._getStop(children[-1])
 
     def getStop(self):
         parentItem = self.readItem(0)
@@ -157,19 +163,11 @@ class Overview:
                 self.scriptOverview[script][info] = 0
             self.scriptOverview[script][info] += time;
 
-def visitItem(oldTree, newTree, parent, oldItem):
-    if oldItem.stop - oldItem.start >= threshold or oldItem.stop == 0:
-        newId = newTree.addChild(parent, oldItem) 
-
-        if oldItem.children is 0:
-            return
-
-        childItem = oldTree.readItem(oldItem.id + 1) 
-        while childItem:
-            visitItem(oldTree, newTree, newId, childItem)
-            if childItem.nextId is 0:
-                break
-            childItem = oldTree.readItem(childItem.nextId) 
+def reduceTree(oldTree, newTree, parent, oldItem):
+    if oldItem.stop == 0 or oldItem.stop - oldItem.start >= threshold:
+        newId = newTree.addChild(parent, oldItem)
+        for child in oldTree.childGenerator(oldItem):
+            reduceTree(oldTree, newTree, newId, child)
         
 ndata = []
 for j, datum in enumerate(data):
@@ -183,16 +181,12 @@ for j, datum in enumerate(data):
     stop = oldTree.getStop()
     newTree = CreateDataTree(wp, start, stop)
 
-    # accurency of 0.1px when graph shown on 1600 width display (1600*400)
-    threshold = (stop - start) / 640000
+    # accuracy of args.threshold (default 0.1) px when graph shown on 1600
+    # width display (1600*400)
+    threshold = int((stop - start) / (64000 / args.threshold))
 
-    if parentItem.children is 1:
-        childItem = oldTree.readItem(1) 
-        while childItem:
-            visitItem(oldTree, newTree, 0, childItem)
-            if childItem.nextId is 0:
-                break
-            childItem = oldTree.readItem(childItem.nextId) 
+    for child in oldTree.childGenerator(parentItem):
+        reduceTree(oldTree, newTree, 0, child)
 
     if args.corrections:
         with open(datapwd+"/"+datum["dict"], "r") as fp:
