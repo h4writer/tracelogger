@@ -63,7 +63,7 @@ class TreeReader(object):
         childId = item.id + 1
         while True:
             child = self.readItem(childId)
-            if child.nextId is 0:
+            if child.nextId == 0:
                 return self._getStop(child)
             childId = child.nextId
         return self._getStop(self.readItem(childId))
