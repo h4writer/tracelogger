@@ -343,11 +343,7 @@ Page.prototype.initFilesList = function() {
       if (/tl-data.json/.test(answer)) {
           this.filelist.innerHTML += "- Most recent trace: ";
           var div = document.createElement("div");
-          div.innerHTML += "<a href='#'>tl-data.json</a>";
-          div.onclick = function() {
-              this.loadFile("tl-data.json");
-              this.filelist.style.display = "none";
-          }.bind(this)
+          div.innerHTML += "<a href='?data=tl-data.json'>tl-data.json</a>";
 
           this.filelist.appendChild(div);
           var br = document.createElement("br");
@@ -363,11 +359,7 @@ Page.prototype.initFilesList = function() {
               continue;
           ( function(i) {
               var div = document.createElement("div");
-              div.innerHTML += "<a href='#'>"+logs[i]+"</a>";
-              div.onclick = function() {
-                  this.loadFile(logs[i]);
-                  this.filelist.style.display = "none";
-              }.bind(this)
+              div.innerHTML += "<a href='?data="+logs[i]+"'>"+logs[i]+"</a>";
 
               this.filelist.appendChild(div);
           }.bind(this))(i)
