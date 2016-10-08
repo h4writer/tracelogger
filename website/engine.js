@@ -1,4 +1,4 @@
-var enableWorker = true;
+var enableWorker = (typeof Worker !== 'undefined');
 
 // Test if in worker
 var worker = (typeof importScripts === 'function');
@@ -118,7 +118,7 @@ DataTree.prototype.stop = function(id) {
   var p1 = this.view.getUint32(id * this.itemSize + 8);
   var p2 = this.view.getUint32(id * this.itemSize + 12);
   var stop = p1*4294967296+p2
-  if (stop == 0)
+  if (stop == 0 && this.hasChilds(id))
       return this.stop(this.childs(id)[this.childs(id).length - 1]);
   return stop;
 }
