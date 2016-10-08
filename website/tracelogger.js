@@ -338,7 +338,7 @@ Page.prototype.initFilesList = function() {
   this.filelist.className = "popup"
   this.filelist.innerHTML = "<h2>File list</h2><p>Select the file you want to examine.</p>"
 
-  request(["/"], function (answer) {
+  request(["list/"], function (answer) {
       answer += "";
       if (/tl-data.json/.test(answer)) {
           this.filelist.innerHTML += "- Most recent trace: ";

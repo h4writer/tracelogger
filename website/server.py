@@ -4,7 +4,7 @@ import BaseHTTPServer
 import os
 import sys
 
-datadir = None
+data_dir = None
 
 class TraceLoggerRequestHandler(SimpleHTTPRequestHandler):
     # Add CORS header
@@ -21,10 +21,22 @@ class TraceLoggerRequestHandler(SimpleHTTPRequestHandler):
         path = SimpleHTTPRequestHandler.translate_path(self, url_path)
         if path is None:
             return path
-        if os.path.isdir(path) or path.endswith(".json") or path.endswith(".tl"):
-            discard = len(os.getcwd()) + 1
-            return os.path.join(datadir, path[discard:])
-        return path
+
+        discard = len(os.getcwd()) + 1
+        path = path[discard:]
+        print path
+
+        # return list of files
+        if path == "list/" or path == "list":
+            return os.path.join(data_dir, "")
+        # return index file
+        if path == "":
+            return os.path.join(website_dir, "tracelogger.html")
+        # return data files
+        if os.path.isdir(os.path.join(data_dir, path)) or path.endswith(".json") or path.endswith(".tl"):
+            return os.path.join(data_dir, path)
+        # return website UI
+        return os.path.join(website_dir, path)
 
 if __name__ == '__main__':
     # Interpret non-numeric first argument as a data directory.
@@ -32,10 +44,10 @@ if __name__ == '__main__':
         try:
             port = int(sys.argv[1])
         except:
-            datadir = sys.argv.pop(1)
+            data_dir = sys.argv.pop(1)
 
-    if datadir is None:
-        datadir = os.getcwd()
+    if data_dir is None:
+        data_dir = os.getcwd()
 
     # If not running from within the website/ directory, assume we are running
     # from the data directory. cd to the website dir so we serve non-data files
