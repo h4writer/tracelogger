@@ -241,6 +241,9 @@ for j, datum in enumerate(data):
         "dict": "%s.dict.%d.json" % (os.path.basename(output), j)
     })
 
+    if "threadName" in datum:
+        ndata[-1]["threadName"] = datum["threadName"]
+
     if args.corrections:
         ndata[-1]["corrections"] = "%s.corrections.%d.json" % (os.path.basename(output), j)
 
