@@ -41,6 +41,15 @@ function request (files, callback, error_cb) {
     }
 }
 
+function lastModified(file, callback) {
+    var xhr = new XMLHttpRequest();
+    xhr.open("HEAD", baseUrl + file);
+    xhr.onload = function getHeaderTime() {
+        callback(this.getResponseHeader("Last-Modified"));
+    }
+    xhr.send();
+}
+
 function percent(double) {
   return Math.round(double*10000)/100;
 }
@@ -360,6 +369,10 @@ Page.prototype.initFilesList = function() {
           ( function(i) {
               var div = document.createElement("div");
               div.innerHTML += "<a href='?data="+logs[i]+"'>"+logs[i]+"</a>";
+
+              lastModified(logs[i], function(modified) {
+                  div.innerHTML += " - "+modified;
+              })
 
               this.filelist.appendChild(div);
           }.bind(this))(i)
