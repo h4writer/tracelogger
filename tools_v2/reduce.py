@@ -1,31 +1,26 @@
 import argparse
-import subprocess
 import struct
 import json
 import shutil
 import os
 import collections
 
-argparser = argparse.ArgumentParser(description='Reduce the logfile to make suitable for online destribution.')
+argparser = argparse.ArgumentParser(description='Reduce the logfile to make suitable for online distribution.')
 argparser.add_argument('js_file', help='the js file to parse')
 argparser.add_argument('output_name', help='the name of the output (without the .js)')
-argparser.add_argument('--no-corrections', action='store_true', help='don\'t compute the corrections files')
+argparser.add_argument('--no-corrections', action='store_false', dest='corrections', help='don\'t compute the corrections files')
+
 args = argparser.parse_args()
 
-corrections = not args.no_corrections
-
-jsfile = args.js_file;
-if jsfile[0] != "/":
-    jsfile = os.getcwd() + "/" + jsfile;
+jsfile = os.path.abspath(args.js_file);
 output = args.output_name;
 
 pwd = os.path.dirname(os.path.realpath(__file__))
 datapwd = os.path.dirname(jsfile)
 
 print "Get data information"
-fp = open(jsfile, "r")
-data = json.load(fp)
-fp.close()
+with open(jsfile, "r") as fp:
+    data = json.load(fp)
 
 TreeItem = collections.namedtuple('TreeItem', ['id', 'start', 'stop', 'textId', 'children', 'nextId'])
 
@@ -177,9 +172,10 @@ def visitItem(oldTree, newTree, parent, oldItem):
             childItem = oldTree.readItem(childItem.nextId) 
         
 ndata = []
-for j in range(len(data)):
-    fp = open(datapwd+"/"+data[j]["tree"], "rb")
-    wp = open(output+'.tree.'+str(j)+'.tl', 'w+b')
+for j, datum in enumerate(data):
+    print "reducing trace #%d of %d files" % (j, len(data))
+    fp = open(datapwd+"/"+datum["tree"], "rb")
+    wp = open("%s.tree.%d.tl" % (output, j), 'w+b')
 
     oldTree = TreeReader(fp)
     parentItem = oldTree.readItem(0)
@@ -198,10 +194,9 @@ for j in range(len(data)):
                 break
             childItem = oldTree.readItem(childItem.nextId) 
 
-    if corrections:
-        fp = open(datapwd+"/"+data[j]["dict"], "r")
-        dic = json.load(fp)
-        fp.close()
+    if args.corrections:
+        with open(datapwd+"/"+datum["dict"], "r") as fp:
+            dic = json.load(fp)
 
         fullOverview = Overview(oldTree, dic)
         fullOverview.calc()
@@ -236,23 +231,20 @@ for j in range(len(data)):
             if script in partOverview.scriptOverview and part in partOverview.scriptOverview[script]:
               correction["scriptOverview"][script][part] -= partOverview.scriptOverview[script][part]
 
-        corrFile = open(output+'.corrections.'+str(j)+'.json', 'wb')
-        json.dump(correction, corrFile)
-        corrFile.close()
+        with open("%s.corrections.%d.json" % (output, j), 'wb') as corrFile:
+            json.dump(correction, corrFile)
     
-    print "copy textmap"
-    shutil.copyfile(datapwd+"/"+data[j]["dict"], output+".dict."+str(j)+".json")
+    shutil.copyfile(datapwd+"/"+datum["dict"], "%s.dict.%d.json" % (output, j))
 
     ndata.append({
-        "tree": os.path.basename(output)+'.tree.'+str(j)+'.tl',
-        "dict": os.path.basename(output)+'.dict.'+str(j)+'.json'
+        "tree": "%s.tree.%d.tl" % (os.path.basename(output), j),
+        "dict": "%s.dict.%d.json" % (os.path.basename(output), j)
     })
 
-    if corrections:
-        ndata[-1]["corrections"] = os.path.basename(output)+'.corrections.'+str(j)+'.json'
+    if args.corrections:
+        ndata[-1]["corrections"] = "%s.corrections.%d.json" % (os.path.basename(output), j)
 
 print "writing js file"
 
-fp = open(output+".json", "w")
-json.dump(ndata, fp);
-fp.close()
+with open(output+".json", "w") as fp:
+    json.dump(ndata, fp);
