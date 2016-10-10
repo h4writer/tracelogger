@@ -3,15 +3,13 @@ define([
     "js/request.js",
     "js/utils.js",
     "js/DrawCanvas.js",
-    "js/SelectionCanvas.js"
-], function(_, request, utils, DrawCanvas, SelectionCanvas) {
+    "js/SelectionCanvas.js",
+    "js/Settings.js",
+    "js/ScriptOverview.js"
+], function(_, request, utils, DrawCanvas, SelectionCanvas, Settings, ScriptOverview) {
 
     function Page() {
-      this.settings = {
-        relative: true,
-        absoluteunit: 10000,
-        drawcutoff: 0.05
-      }
+        this.settings = new Settings()
     }
 
     Page.prototype.init = function() {
@@ -49,7 +47,6 @@ define([
         } else {
             this.data = data;
             this.initPopup()
-            this.initSettings()
         }
      }.bind(this), function(file) {
          alert("Failed to load: "+file);
@@ -124,48 +121,6 @@ define([
       }
 
       document.body.appendChild(this.popup);
-    }
-
-    Page.prototype.initSettings = function() {
-
-      var a = document.createElement("a");
-      a.innerHTML = "settings";
-      a.href = "#";
-      a.className = "nav";
-      a.onclick = function() {
-          this.settingspopup.style.display = "block";
-      }.bind(this)
-      document.body.insertBefore(a, document.getElementsByTagName("h1")[0].nextSibling);
-
-      this.settingspopup = document.createElement("div");
-      this.settingspopup.id = "settingspopup"
-      this.settingspopup.className = "popup"
-      this.settingspopup.innerHTML =
-        "<h2>Settings</h2>" +
-        "<p>Timings: <select><option "+(this.settings.relative?"":"selected")+">absolute</option><option "+(this.settings.relative?"selected":"")+">relative</option></select></p>"+
-        "<p>Absolute unit: <input type='text' value='"+this.settings.absoluteunit+"' /> ops/unit</p>"+
-        "<p>Min draw size for graph: <input type='text' value='"+this.settings.drawcutoff+"' /> px</p>"+
-        "<p><input type='button' value='close' /></p>"
-      document.body.appendChild(this.settingspopup);
-
-      var settings = this.settings;
-      this.settingspopup.getElementsByTagName("select")[0].onchange = function() {
-          settings.relative = this.value == "relative"
-      }
-      this.settingspopup.getElementsByTagName("input")[0].onchange = function() {
-          settings.absoluteunit = this.value
-      }
-      this.settingspopup.getElementsByTagName("input")[1].onchange = function() {
-          settings.drawcutoff = this.value
-      }
-      this.settingspopup.getElementsByTagName("input")[2].onclick = function() {
-          this.settingspopup.style.display = "none";
-          this.computeOverview();
-          if (this.zoom) this.zoom.minDraw = settings.drawcutoff;
-          if (this.canvas) this.canvas.minDraw = settings.drawcutoff;
-          this.resize();
-      }.bind(this)
-
     }
 
     Page.prototype.initPopupElement = function(data) {
@@ -272,6 +227,11 @@ define([
       if (this.canvas) {
           this.canvas.reset();
           this.zoom.reset();
+      } else {
+          this.settings.on("drawcutoff", () => {
+              this.canvas.minDraw = this.settings.drawcutoff;
+              this.canvas.draw();
+          });
       }
 
       var canvas = new DrawCanvas(document.getElementById("myCanvas"), this.tree, {
@@ -298,6 +258,8 @@ define([
       this.canvas.draw();
       this.zoom.dom.width = (document.body.clientWidth - 350)
       this.zoom.draw();
+      this.selection.dom.width = (document.body.clientWidth - 350)
+      this.selection.draw();
     }
 
     Page.prototype.initOverview = function() {
@@ -308,12 +270,18 @@ define([
         chunk_cb: Page.prototype.computeOverview.bind(this)
       });
 
+      this.settings.on("change", () => { // actually "relative" and "absoluteunit"
+        this.computeOverview();
+      });
+
       if (this.corrections) {
         this.overview.engineOverview = this.corrections.engineOverview;
         this.overview.engineAmount = this.corrections.engineAmount;
         this.overview.scriptOverview = this.corrections.scriptOverview;
         this.overview.scriptTimes = this.corrections.scriptTimes;
       }
+
+      var scriptOverview = new ScriptOverview(this.overview, this.settings);
 
       this.tablesInited = false;
       this.overview.init();
@@ -336,27 +304,8 @@ define([
         var tbody = overview.createTBody();
         sorttable.makeSortable(overview);
 
-        dom = document.getElementById("scriptOverview");
-        output = "<h2>Script Overview</h2><table id='scriptOverviewTable'></table>";
-        dom.innerHTML = output;
-
-        var overview = document.getElementById("scriptOverviewTable");
-        var thead = overview.createTHead();
-        var row = thead.insertRow(0);
-        row.insertCell(0).innerHTML = "Script";
-        row.insertCell(1).innerHTML = "Times called";
-        row.insertCell(2).innerHTML = "Times compiled";
-        row.insertCell(3).innerHTML = "Total time";
-        row.insertCell(4).innerHTML = "Spend time";
-        row.cells[1].className = "sorttable_numeric";
-        row.cells[2].className = "sorttable_numeric";
-        row.cells[3].className = "sorttable_numeric";
-        var tbody = overview.createTBody();
-        sorttable.makeSortable(overview);
-
         this.tablesInited = true;
         this.engineOverviewTable = []
-        this.scriptOverviewTable = []
         return;
       }
 
@@ -404,48 +353,6 @@ define([
           else
               this.engineOverviewTable[i].cells[2].innerHTML = Math.round(this.overview.engineOverview[i]/this.settings.absoluteunit);
       }
-
-      for (var script in this.overview.scriptOverview) {
-        if (!this.overview.scriptTimes[script]["IonCompilation"])
-          this.overview.scriptTimes[script]["IonCompilation"] = 0
-        if (!(script in this.scriptOverviewTable)) {
-          var overview = document.getElementById("scriptOverviewTable").tBodies[0];
-          var row = overview.insertRow(overview.rows.length);
-          row.insertCell(0);
-          row.insertCell(1);
-          row.insertCell(2);
-          row.insertCell(3);
-          row.insertCell(4);
-          this.scriptOverviewTable[script] = row;
-        }
-
-        this.scriptOverviewTable[script].cells[0].innerHTML = script;
-        this.scriptOverviewTable[script].cells[1].innerHTML = this.overview.scriptTimes[script][script];
-        this.scriptOverviewTable[script].cells[2].innerHTML = this.overview.scriptTimes[script]["IonCompilation"];
-
-        var script_total = 0;
-        for (var j in this.overview.scriptOverview[script]) {
-          if (j != script)
-              script_total += this.overview.scriptOverview[script][j];
-        }
-
-
-        if (this.settings.relative)
-            this.scriptOverviewTable[script].cells[3].innerHTML = utils.percent(script_total/total)+"%";
-        else
-            this.scriptOverviewTable[script].cells[3].innerHTML = Math.round(script_total/this.settings.absoluteunit);
-
-        var output = "";
-        for (var j in this.overview.scriptOverview[script]) {
-          if (j != script) {
-            if (this.settings.relative)
-              output += ""+j+": "+utils.percent(this.overview.scriptOverview[script][j]/script_total)+"%, ";
-            else
-              output += ""+j+": "+Math.round(this.overview.scriptOverview[script][j]/this.settings.absoluteunit)+", ";
-          }
-        }
-        this.scriptOverviewTable[script].cells[4].innerHTML = output;
-      }
     }
 
     Page.prototype.createZoom = function() {
@@ -455,6 +362,11 @@ define([
         } else {
             zoomdom = document.createElement("canvas");
             this.canvas.dom.parentNode.insertBefore(zoomdom, this.canvas.dom);
+
+            this.settings.on("drawcutoff", () => {
+                this.zoom.minDraw = this.settings.drawcutoff;
+                this.zoom.draw();
+            });
 
             zoomdom.height = "50"
             zoomdom.width = "750"

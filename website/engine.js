@@ -265,15 +265,27 @@ Overview.prototype.init = function() {
     this.processQueue();
   } else {
       var chunk_cb = this.settings.chunk_cb;
+      var finish_cb = this.settings.finish_cb;
+      var reset_cb = this.settings.reset_cb;
       this.settings.chunk_cb = null;
+      this.settings.finish_cb = null;
+      this.settings.reset_cb = null;
 
       var wor = new Worker('engine.js');
       wor.addEventListener('message', function(e) {
-          this.engineOverview = e.data.engineOverview;
-          this.engineAmount = e.data.engineAmount;
-          this.scriptOverview = e.data.scriptOverview;
-          this.scriptTimes = e.data.scriptTimes;
-          chunk_cb();
+          if (e.data.type == "chunk") {
+              this.engineOverview = e.data.engineOverview;
+              this.engineAmount = e.data.engineAmount;
+              this.scriptOverview = e.data.scriptOverview;
+              this.scriptTimes = e.data.scriptTimes;
+              chunk_cb();
+          } else if (e.data.type == "finish") {
+              this.engineOverview = e.data.engineOverview;
+              this.engineAmount = e.data.engineAmount;
+              this.scriptOverview = e.data.scriptOverview;
+              this.scriptTimes = e.data.scriptTimes;
+              finish_cb();
+          }
       }.bind(this), false);
 
       wor.postMessage({type: "overview",
@@ -285,21 +297,35 @@ Overview.prototype.init = function() {
                        scriptOverview: this.scriptOverview,
                        scriptTimes: this.scriptTimes});
       this.settings.chunk_cb = chunk_cb;
+      this.settings.finish_cb = finish_cb;
+      this.settings.reset_cb = reset_cb;
   }
 }
 
 if (enableWorker && worker) {
+    var overview;
     addEventListener('message', function(e) {
         if (e.data.type == "overview") {
-            var overview;
             e.data.settings.chunk_cb = function() {
                 self.postMessage({
+                    type: "chunk",
                     engineOverview: overview.engineOverview,
                     engineAmount: overview.engineAmount,
                     scriptOverview: overview.scriptOverview,
                     scriptTimes: overview.scriptTimes,
                 });
             }
+            e.data.settings.finish_cb = function() {
+                self.postMessage({
+                    type: "finish",
+                    engineOverview: overview.engineOverview,
+                    engineAmount: overview.engineAmount,
+                    scriptOverview: overview.scriptOverview,
+                    scriptTimes: overview.scriptTimes,
+                });
+            }
+            if (overview)
+                overview.reset();
             overview = new Overview(new DataTree(e.data.buffer, e.data.textmap), e.data.settings);
             overview.engineOverview = e.data.engineOverview;
             overview.engineAmount = e.data.engineAmount;
@@ -308,6 +334,40 @@ if (enableWorker && worker) {
             overview.init();
         }
     });
+}
+
+Overview.prototype.on = function(name, callback) {
+    if (name == "chunk") {
+        if (this.settings.chunk_cb === undefined) {
+            this.settings.chunk_cb = callback;
+        } else {
+            var prev = this.settings.chunk_cb;
+            this.settings.chunk_cb = function(overview) {
+                callback(overview);
+                prev(overview);
+            }
+        }
+    } else if (name == "finish") {
+        if (this.settings.finish_cb === undefined) {
+            this.settings.finish_cb = callback;
+        } else {
+            var prev = this.settings.finish_cb;
+            this.settings.finish_cb = function(overview) {
+                callback(overview);
+                prev(overview);
+            }
+        }
+    } else if (name == "reset") {
+        if (this.settings.reset_cb === undefined) {
+            this.settings.reset_cb = callback;
+        } else {
+            var prev = this.settings.reset_cb;
+            this.settings.reset_cb = function(overview) {
+                callback(overview);
+                prev(overview);
+            }
+        }
+    }
 }
 
 Overview.prototype.setClip = function(start, stop) {
@@ -460,4 +520,6 @@ Overview.prototype.reset = function() {
     this.scriptOverview = {}
     this.scriptTimes = {}
     this.threshold = (this.tree.stop(0) - this.tree.start(0));
+    if (this.settings.reset_cb)
+      this.settings.reset_cb(this);
 }

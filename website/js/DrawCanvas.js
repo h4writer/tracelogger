@@ -70,7 +70,7 @@ define([], function() {
       if ((stop - start) < this.drawThreshold / this.conversion) {
 
           // Too small to draw.
-          if ((stop - start) <= this.minDraw / this.conversion)
+          if ((stop - start) <= this.minDraw*1.0 / this.conversion)
               return;
 
           // Draw in a later pass.
@@ -172,9 +172,9 @@ define([], function() {
         this.currentQueue = this.futureQueue;
         this.currentPos = 0;
         this.futureQueue = []
-        if (this.drawThreshold < this.minDraw)
+        if (this.drawThreshold <= this.minDraw)
           return;
-        this.drawThreshold = this.drawThreshold / 2
+        this.drawThreshold = Math.max(this.drawThreshold / 2, this.minDraw)
         this.timer = setTimeout(DrawCanvas.prototype.drawQueue.bind(this), 1);
         return;
       }
