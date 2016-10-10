@@ -521,17 +521,16 @@ define([
 
         var backtrace = this.canvas.backtraceAtPos(posx, posy);
         var output = "";
-        for (var i=0; i < backtrace.length; i++) {
+        for (var i=backtrace.length-1; i >= 0; i--) {
           var info = backtrace[i]
 
-          if (info.substring(0,6) == "script")
-            output += translateScript(info.substring(6)) + "<br />"
+          if (info["name"].substring(0,6) == "script")
+            output += translateScript(info["name"].substring(6)) + "<br />"
           else
-            output += info + "<br />"
+            output += info["name"] + "<br />"
         }
 
         document.getElementById("backtrace").innerHTML = output;
-        document.getElementById("backtrace").scrollTop = backtrace.length*40;
     }
 
     return Page;

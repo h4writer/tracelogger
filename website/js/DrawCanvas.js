@@ -129,7 +129,11 @@ define([], function() {
         for (var i = 0; i < childs.length; i++) {
           if (this.tree.start(childs[i]) <= tick && this.tree.stop(childs[i]) > tick) {
             id = childs[i]
-            bt[bt.length] = this.tree.text(id);
+            bt[bt.length] = {
+                name: this.tree.text(id),
+                start: this.tree.start(id),
+                stop: this.tree.stop(id)
+            }
             found = true
             break;
           }
