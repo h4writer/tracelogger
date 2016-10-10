@@ -1,6 +1,6 @@
 
 requirejs([
-    "js/pace.js",
+    "js/lib/pace.js",
     "js/Page.js"
 ], function(_, Page) {
 

@@ -1,5 +1,5 @@
 define([
-    "js/sorttable.js",
+    "js/lib/sorttable.js",
     "js/request.js",
     "js/utils.js",
     "js/DrawCanvas.js",
