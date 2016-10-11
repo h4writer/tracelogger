@@ -520,7 +520,7 @@ define([
         }
 
         var backtrace = this.canvas.backtraceAtPos(posx, posy);
-        var output = "";
+        var output = "<b>Stack trace:</b><br />";
         for (var i=backtrace.length-1; i >= 0; i--) {
           var info = backtrace[i]
 
