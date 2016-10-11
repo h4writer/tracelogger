@@ -60,13 +60,13 @@ define([
                 Calculating the script overview ...
                 <button>Click here to create pretty table of preliminary data.</button>
                 <div id='quickdrawingpaused'>
-                    Updating the view has been paused ...
+                    Updating the view has been paused and will get refreshed when finished ...
                     <button>Unpause</button>
                 </div>
             </div>
             <div id='fulldrawing'>
                 The data in this table is outdated ...
-                <button>Update</button>
+                <button>Update</button> or wait till finished.
             </div>
             <div id='scriptOverviewContent'></div>
         `;
