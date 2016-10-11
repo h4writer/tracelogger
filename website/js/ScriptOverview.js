@@ -7,6 +7,7 @@ define([
 
         this.overviewFinished = false;
         this.drawingFull = false;
+        this.paused = false;
 
         // When the settings change recalculate the overview.
         // Note: actual only needed on "relative" and "absoluteunit" change.
@@ -21,17 +22,23 @@ define([
         this.overview.on("reset", () => {
             this.overviewFinished = false;
             this.drawingFull = false;
+            this.paused = false;
         });
 
         // Quick draw (max every 100ms)
+        // and stop drawing as soon as it takes longer than 100ms.
         var lastDraw = new Date();
         this.overview.on("chunk", () => {
-            if (this.drawingFull)
+            if (this.drawingFull || this.paused)
                 return;
             var curtime = new Date();
             if (curtime - lastDraw > 100) {
                 this.quickDraw();
                 lastDraw = curtime;
+                if (new Date() - curtime > 100) {
+                    this.paused = true;
+                    this.quickdrawingpaused.style.display = "block";
+                }
             }
         });
 
@@ -42,7 +49,7 @@ define([
         });
 
         this.initDOM();
-    } 
+    }
 
     ScriptOverview.prototype.initDOM = function() {
         var dom = document.getElementById("scriptOverview");
@@ -52,6 +59,10 @@ define([
             <div id='quickdrawing'>
                 Calculating the script overview ...
                 <button>Click here to create pretty table of preliminary data.</button>
+                <div id='quickdrawingpaused'>
+                    Updating the view has been paused ...
+                    <button>Unpause</button>
+                </div>
             </div>
             <div id='fulldrawing'>
                 The data in this table is outdated ...
@@ -64,12 +75,17 @@ define([
 
         this.content = document.getElementById("scriptOverviewContent");
         this.quickdrawing = document.getElementById("quickdrawing");
+        this.quickdrawingpaused = document.getElementById("quickdrawingpaused");
         this.fulldrawing = document.getElementById("fulldrawing");
-        document.getElementById("quickdrawing").onclick = () => {
+        document.getElementById("quickdrawing").getElementsByTagName("button")[0].onclick = () => {
             this.drawingFull = true;
             this.fullDraw();
         };
-        document.getElementById("fulldrawing").onclick = () => {
+        document.getElementById("quickdrawingpaused").getElementsByTagName("button")[0].onclick = () => {
+            this.paused = false;
+            this.quickdrawingpaused.style.display = "none";
+        };
+        document.getElementById("fulldrawing").getElementsByTagName("button")[0].onclick = () => {
             this.fullDraw();
         };
         this.quickdrawing.style.display = "none";
@@ -78,6 +94,8 @@ define([
 
     ScriptOverview.prototype.quickDraw = function() {
         this.quickdrawing.style.display = "block";
+        this.quickdrawingpaused.style.display = "none";
+        this.fulldrawing.style.display = "none";
 
         var total = 0;
         for (var i in this.overview.engineOverview) {
