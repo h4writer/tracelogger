@@ -478,6 +478,13 @@ Overview.prototype.processQueue = function () {
     this.queue = this.futureQueue;
     this.futureQueue = []
     this.threshold = this.threshold / 2
+    // If the queue is getting too big, it is most likely that it is just
+    // copying the same items to future queue the whole time, since the
+    // items are too small. This is bad for memory and for speed.
+    // As a result just iterate the remaining items in order,
+    // instead of top-down.
+    if (this.queue.length > 100000)
+        this.threshold = 0;
     setTimeout(Overview.prototype.processQueue.bind(this), 1);
     return;
   }
