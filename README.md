@@ -33,7 +33,7 @@ They can get execute with "execute.py". Execute "execute.py -h" to get an full l
 - overview: Gives an overview of where the time was spend.
 - waiting_for_ion: Gives how much time was spend trying to execute a script, that we were compiling in ion.
 
-python execute.py <tool> <js shell> <tl-data.json>
+python execute.py [tool] [js shell] [tl-data.json]
 
 **3. reduce.py: Reducing a tracelogging graph:**
 
