@@ -43,6 +43,7 @@ function TextToColor(textmap) {
       case "ParserCompileFunction": color = "#CC8585"; break;
       case "VM": color = "#00aaff"; break;
       case "Internal":
+      case "TraceLogger overhead":
       case "TraceLogger": color = "#ffbfd9"; break;
       default:
         if (textmap[i].substring(0,6) == "script")
