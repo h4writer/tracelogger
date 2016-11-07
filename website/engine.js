@@ -41,6 +41,10 @@ function TextToColor(textmap) {
       case "ParserCompileScript": color = "#DB0000"; break;
       case "ParserCompileLazy": color = "#A30000"; break;
       case "ParserCompileFunction": color = "#CC8585"; break;
+      case "EncodeScript": color = "#00708c"; break;
+      case "EncodeFunction": color = "#00708c"; break;
+      case "DecodeScript": color = "#40708c"; break;
+      case "DecodeFunction": color = "#40708c"; break;
       case "VM": color = "#00aaff"; break;
       case "Internal":
       case "TraceLogger overhead":
