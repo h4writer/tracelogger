@@ -14,6 +14,7 @@ class SmartFormatter(argparse.HelpFormatter):
 
 tools = {
     "dump": "Dump the binary format in a textual format.",
+    "dump_delta": "Dump the binary format in a textual format with delta instead of START/STOP.",
     "dump_flat": "Dump the binary format in a flat textual format.",
     "overview": "Gives an overview of where the time was spend.",
     "waiting_for_ion": "Gives how much time was spend trying to execute a script, that we were compiling in ion."
