@@ -53,7 +53,7 @@ function TextToColor(textmap) {
         if (textmap[i].substring(0,6) == "script")
           color = "white";
         else
-          color = colors[usedColors++];
+          color = colors[usedColors++%colors.length];
         break;
     }
     this.map[textmap[i]] = color;

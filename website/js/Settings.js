@@ -8,9 +8,9 @@ define([
         this.drawcutoff = 0.05;
 
         this.initDOM();
-    }
 
-    eventify(Settings);
+        eventify(this);
+    }
 
     Settings.prototype.initDOM = function() {
         var a = document.createElement("a");
@@ -36,8 +36,8 @@ define([
         `;
 
         var settings = this;
-        dom = dom.replace("{{absolute}}", settings.relative ? "" : "CHECKED");
-        dom = dom.replace("{{relative}}", settings.relative ? "CHECKED" : "");
+        dom = dom.replace("{{absolute}}", settings.relative ? "" : "SELECTED");
+        dom = dom.replace("{{relative}}", settings.relative ? "SELECTED" : "");
         dom = dom.replace("{{absoluteunit}}", settings.absoluteunit);
         dom = dom.replace("{{drawcutoff}}", settings.drawcutoff);
 
@@ -59,15 +59,21 @@ define([
         }
         this.settingspopup.getElementsByTagName("input")[2].onclick = function() {
             var fireEvents = [];
-            if (nsettings.relative != settings.relative) {
-                settings.relative = settings.relative;
+            if (typeof nsettings.relative != "undefined" &&
+                nsettings.relative != settings.relative)
+            {
+                settings.relative = nsettings.relative;
                 fireEvents.push("relative");
             }
-            if (nsettings.absoluteunit != settings.absoluteunit) {
-                settings.absoluteunit = settings.absoluteunit;
+            if (typeof nsettings.absoluteunit != "undefined" &&
+                nsettings.absoluteunit != settings.absoluteunit)
+            {
+                settings.absoluteunit = nsettings.absoluteunit;
                 fireEvents.push("absoluteunit");
             }
-            if (nsettings.drawcutoff != settings.drawcutoff) {
+            if (typeof nsettings.drawcutoff != "undefined" &&
+                nsettings.drawcutoff != settings.drawcutoff)
+            {
                 settings.drawcutoff = nsettings.drawcutoff;
                 fireEvents.push("drawcutoff");
             }
