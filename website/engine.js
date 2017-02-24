@@ -38,9 +38,18 @@ function TextToColor(textmap) {
       case "Interpreter": color = "#FFFFFF"; break;
       case "Baseline": color = "#FFE75E"; break;
       case "IonMonkey": color = "#54D93D"; break;
-      case "ParserCompileScript": color = "#DB0000"; break;
-      case "ParserCompileLazy": color = "#A30000"; break;
-      case "ParserCompileFunction": color = "#CC8585"; break;
+      // Parsing stuff is bluish.
+      case "ParsingFull": color = "#191970"; break;
+      case "ParsingSyntax": color = "#6495ED"; break;
+      // BCE stuff is brownish.
+      case "BytecodeEmission": color = "#A52A2A"; break;
+      case "BytecodeFoldConstants": color = "#D2691E"; break;
+      case "BytecodeNameFunctions": color = "#DaA520"; break;
+      // Tokenizing is yellow.
+      case "Tokenizing": color = "#FFD700"; break;
+      // Frontend analysis stuff is purplish.
+      case "FrontendNameAnalysis": color = "#800080"; break;
+      case "FrontendTDZAnalysis": color = "#DDA0DD"; break;
       case "EncodeScript": color = "#00708c"; break;
       case "EncodeFunction": color = "#00708c"; break;
       case "DecodeScript": color = "#40708c"; break;
