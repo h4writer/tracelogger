@@ -6,13 +6,13 @@ Tracelogger graph
 Tracelogger is a tool in the SpiderMonkey JS engine that can make execution traces. This repository contains the tools a graph out of these traces. The tool is mostly used by JS engine engineers to pinpoint issues or to have a broad view of what is going in the engine.
 
 In order to get a trace and corresponding file output, one has to run the JS shell or browser with an environment variable:
-TLLOG=Default TLOPTIONS=EnableMainThread,EnableOffThread,EnableGraph
+TLLOG=Default TLOPTIONS=EnableActiveThread,EnableOffThread,EnableGraph
 
 This will create files in /tmp/ on linux and in the current directory on windows. The main file is tl-data.json, which contains a pointer to all extra files. Per thread there will be a "tl-dict.\*.json", "tl-tree.\*.json" and a "tl-event.\*.json" file.
 
 Configuring what needs to be traces can be done by adjusting the TLLOG and TLOPTIONS environment variables. To get a list of every possible input you can put "help" in the environment variable.
 - TLLOG: This variable decides what gets traced. Default contains an default list of items to trace, but it is possible to trace other things. There are hooks that are not enabled by default to trace individual compilation passes or VM calls. Note: By enabling more, you will get more overhead and the files will get bigger.
-- TLOPTIONS: This variable decideds some global options. The JS engine has the notion of mainthread (that runs the JS code) and helper threads (offthread), which helps in GC, compilation, parsing ... It is possible to only log one or the other. The EnableGraph part is needed to create the graph output files from the traces in memory. Don't omit that.
+- TLOPTIONS: This variable decideds some global options. The JS engine has the notion of active thread (that runs the JS code) and helper threads (offthread), which helps in GC, compilation, parsing ... It is possible to only log one or the other. The EnableGraph part is needed to create the graph output files from the traces in memory. Don't omit that.
 
 Tools
 =====
