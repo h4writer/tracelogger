@@ -3,16 +3,17 @@ Tracelogger graph
 
 ![Screenshot](screenshot.png)
 
-Tracelogger is a tool in the SpiderMonkey JS engine that can make execution traces. This repository contains the tools a graph out of these traces. The tool is mostly used by JS engine engineers to pinpoint issues or to have a broad view of what is going in the engine.
+Tracelogger is a tool in the SpiderMonkey JavaScript engine that can make execution traces. This repository contains the tools to plot a graph from these traces. The tool is mostly used by JS engine engineers to pinpoint issues or to have a broad view of what is going in the engine.
 
-In order to get a trace and corresponding file output, one has to run the JS shell or browser with an environment variable:
-TLLOG=Default TLOPTIONS=EnableActiveThread,EnableOffThread,EnableGraph
+To get a trace and corresponding file output, run the JS shell or browser with these environment variables set:
 
-This will create files in /tmp/ on linux and in the current directory on windows. The main file is tl-data.json, which contains a pointer to all extra files. Per thread there will be a "tl-dict.\*.json", "tl-tree.\*.json" and a "tl-event.\*.json" file.
+    TLLOG=Default TLOPTIONS=EnableActiveThread,EnableOffThread,EnableGraph
 
-Configuring what needs to be traces can be done by adjusting the TLLOG and TLOPTIONS environment variables. To get a list of every possible input you can put "help" in the environment variable.
+This will create files in /tmp/ on Linux and in the current directory on Windows. The main file is tl-data.json, which contains a pointer to all extra files. Per thread there will be a "tl-dict.\*.json", "tl-tree.\*.json" and a "tl-event.\*.json" file.
+
+Configuring what needs to be traced can be done by adjusting the TLLOG and TLOPTIONS environment variables. To get a list of every possible input you can put "help" in the environment variable.
 - TLLOG: This variable decides what gets traced. Default contains an default list of items to trace, but it is possible to trace other things. There are hooks that are not enabled by default to trace individual compilation passes or VM calls. Note: By enabling more, you will get more overhead and the files will get bigger.
-- TLOPTIONS: This variable decideds some global options. The JS engine has the notion of active thread (that runs the JS code) and helper threads (offthread), which helps in GC, compilation, parsing ... It is possible to only log one or the other. The EnableGraph part is needed to create the graph output files from the traces in memory. Don't omit that.
+- TLOPTIONS: This variable decides some global options. The JS engine has the notion of active thread (that runs the JS code) and helper threads (offthread), which helps in GC, compilation, parsing ... It is possible to log only one or the other. The EnableGraph part is needed to create the graph output files from the traces in memory. Don't omit that.
 
 Tools
 =====
@@ -25,13 +26,13 @@ Tools
 
 **2. JavaScript tools:**
 
-There are some small javascript tools included that can give another view on the the logged data.
-They can get execute with "execute.py". Execute "execute.py -h" to get an full list of those tools.
+There are some small JavaScript tools included that can give another view on the the logged data.
+They can be executed with "execute.py". Execute "execute.py -h" to get an full list of those tools.
 
 - dump: Dump the binary format in a textual format.
 - dump_flat: Dump the binary format in a flat textual format.
-- overview: Gives an overview of where the time was spend.
-- waiting_for_ion: Gives how much time was spend trying to execute a script, that we were compiling in ion.
+- overview: Gives an overview of where the time was spent.
+- waiting_for_ion: Gives how much time was spent trying to execute a script, that we were compiling in IonMonkey.
 
 python execute.py [tool] [js shell] [tl-data.json]
 
@@ -47,7 +48,7 @@ Note: using 'pypy' instead of 'python' will sometimes not work. Some pypy versio
 
 **4. navigate.py: Read log files interactive in the console**
 
-When you don't want an high level overview, but want to navigate the raw data of the logfiles. Navigate the files using arrow keys and enter to view the content inside the tree item.
+When you don't want a high level overview, but want to navigate the raw data of the logfiles. Navigate the files using arrow keys and enter to view the content inside the tree item.
 
 - Make sure you have a JS shell named $JS
 - Download the full "tools" directory
